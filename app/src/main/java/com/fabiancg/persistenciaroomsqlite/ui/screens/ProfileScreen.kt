@@ -1,5 +1,8 @@
 package com.fabiancg.persistenciaroomsqlite.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,57 +14,78 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.MilitaryTech
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DividerDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.fabiancg.persistenciaroomsqlite.AppDatabase
 import com.fabiancg.persistenciaroomsqlite.SessionManager
 import com.fabiancg.persistenciaroomsqlite.Usuario
+import kotlinx.coroutines.launch
 
+/**
+ * Pantalla de Perfil de Usuario.
+ * Cumple con dos requerimientos clave de la pauta:
+ * 1. Editar datos de usuario (nombre, correo, contraseña) y guardarlos en SQLite.
+ * 2. Cerrar sesión con diálogo de confirmación.
+ */
 @Composable
 fun ProfileScreen(
     usuario: Usuario?,
+    onUsuarioActualizado: (Usuario) -> Unit,
     onCerrarSesion: () -> Unit
 ) {
     val context = LocalContext.current
-    var mostrarConfirmacionLogout by remember { mutableStateOf(false) }
+    val usuarioDao = remember { AppDatabase.getDatabase(context).usuarioDao() }
+    val scope = rememberCoroutineScope()
+
+    // Estados para la edición de datos
+    var modoEdicion by remember { mutableStateOf(false) }
+    var nombreEditado by remember { mutableStateOf(usuario?.nombre ?: "") }
+    var emailEditado by remember { mutableStateOf(usuario?.email ?: "") }
+    var claveEditada by remember { mutableStateOf(usuario?.contrasena ?: "") }
+
+    var mensajeError by remember { mutableStateOf<String?>(null) }
+    var mensajeExito by remember { mutableStateOf<String?>(null) }
+    var mostrarDialogoLogout by remember { mutableStateOf(false) }
+
     val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(scrollState)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -71,7 +95,7 @@ fun ProfileScreen(
         // Avatar del Aspirante
         Box(
             modifier = Modifier
-                .size(86.dp)
+                .size(80.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center
@@ -80,11 +104,11 @@ fun ProfileScreen(
                 imageVector = Icons.Default.Person,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(54.dp)
+                modifier = Modifier.size(48.dp)
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = usuario?.nombre ?: "Aspirante a Carabinero",
@@ -94,7 +118,7 @@ fun ProfileScreen(
         )
 
         Text(
-            text = usuario?.escalafon ?: "Escuela de Formación de Carabineros",
+            text = "RUT: ${usuario?.rut ?: "No disponible"}",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Medium
@@ -102,147 +126,184 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Tarjeta con información del perfil
+        // TARJETA DE INFORMACIÓN Y EDICIÓN DE DATOS
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Datos de la Cuenta",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (modoEdicion) "Editar Mis Datos" else "Datos del Usuario",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            modoEdicion = !modoEdicion
+                            mensajeError = null
+                            mensajeExito = null
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (modoEdicion) Icons.Default.Person else Icons.Default.Edit,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.size(6.dp))
+                        Text(if (modoEdicion) "Cancelar" else "Editar")
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
 
-                ItemInfoPerfil(
-                    icono = Icons.Default.Badge,
-                    etiqueta = "RUT Aspirante",
-                    valor = usuario?.rut ?: "No registrado"
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = DividerDefaults.color)
-
-                ItemInfoPerfil(
-                    icono = Icons.Default.Email,
-                    etiqueta = "Correo Institucional",
-                    valor = usuario?.email ?: "No registrado"
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = DividerDefaults.color)
-
-                ItemInfoPerfil(
-                    icono = Icons.Default.MilitaryTech,
-                    etiqueta = "Institución y Asignatura",
-                    valor = "ESFOCAR - DSY1105 Duoc UC"
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = DividerDefaults.color)
-
-                ItemInfoPerfil(
-                    icono = Icons.Default.Storage,
-                    etiqueta = "Modo de Almacenamiento",
-                    valor = "Local Offline-First (Room SQLite)"
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Botón para Cerrar Sesión
-        Button(
-            onClick = { mostrarConfirmacionLogout = true },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error
-            ),
-            shape = RoundedCornerShape(10.dp)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                contentDescription = null
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Cerrar Sesión",
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-
-    // Diálogo de Confirmación de Cierre de Sesión
-    if (mostrarConfirmacionLogout) {
-        AlertDialog(
-            onDismissRequest = { mostrarConfirmacionLogout = false },
-            icon = {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
-                )
-            },
-            title = {
-                Text(text = "Cierre de Sesión")
-            },
-            text = {
-                Text(
-                    text = "¿Está seguro de que desea cerrar la sesión actual? Sus datos y progreso seguirán guardados localmente en la base de datos SQLite."
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        mostrarConfirmacionLogout = false
-                        SessionManager.cerrarSesion(context)
-                        onCerrarSesion()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
+                if (!modoEdicion) {
+                    // MODO SOLO LECTURA
+                    Text("Correo: ${usuario?.email ?: ""}", style = MaterialTheme.typography.bodyLarge)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("Escalafón: Aspirante a Carabinero (ESFOCAR)", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("Base de datos: Room SQLite (Offline)", style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    // MODO EDICIÓN DE DATOS (REQUERIMIENTO: EDITAR DATOS DE USUARIO)
+                    OutlinedTextField(
+                        value = nombreEditado,
+                        onValueChange = { nombreEditado = it },
+                        label = { Text("Nombre Completo") },
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
-                ) {
-                    Text("Sí, Cerrar Sesión")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { mostrarConfirmacionLogout = false }) {
-                    Text("Cancelar")
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = emailEditado,
+                        onValueChange = { emailEditado = it },
+                        label = { Text("Correo Institucional") },
+                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = claveEditada,
+                        onValueChange = { claveEditada = it },
+                        label = { Text("Nueva Contraseña") },
+                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    // Animación para mensajes de éxito o error
+                    AnimatedVisibility(visible = mensajeError != null, enter = fadeIn(), exit = fadeOut()) {
+                        Text(
+                            text = mensajeError ?: "",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+
+                    AnimatedVisibility(visible = mensajeExito != null, enter = fadeIn(), exit = fadeOut()) {
+                        Text(
+                            text = mensajeExito ?: "",
+                            color = Color(0xFF1B5E20),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Button(
+                        onClick = {
+                            mensajeError = null
+                            mensajeExito = null
+
+                            // Validaciones para la edición
+                            if (nombreEditado.trim().length < 3) {
+                                mensajeError = "El nombre debe tener al menos 3 caracteres."
+                                return@Button
+                            }
+                            if (!emailEditado.contains("@") || !emailEditado.contains(".")) {
+                                mensajeError = "El correo debe ser válido con @ y punto."
+                                return@Button
+                            }
+                            if (claveEditada.length < 6) {
+                                mensajeError = "La contraseña debe tener mínimo 6 caracteres."
+                                return@Button
+                            }
+
+                            // Guardar cambios en SQLite
+                            if (usuario != null) {
+                                scope.launch {
+                                    val usuarioActualizado = usuario.copy(
+                                        nombre = nombreEditado.trim(),
+                                        email = emailEditado.trim(),
+                                        contrasena = claveEditada.trim()
+                                    )
+                                    usuarioDao.actualizar(usuarioActualizado)
+                                    SessionManager.guardarSesion(context, usuarioActualizado)
+                                    onUsuarioActualizado(usuarioActualizado)
+                                    mensajeExito = "¡Datos actualizados con éxito en SQLite!"
+                                    modoEdicion = false
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Save, contentDescription = null)
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text("Guardar Cambios")
+                    }
                 }
             }
-        )
-    }
-}
+        }
 
-@Composable
-private fun ItemInfoPerfil(
-    icono: ImageVector,
-    etiqueta: String,
-    valor: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icono,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
-            Text(
-                text = etiqueta,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = valor,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // BOTÓN CERRAR SESIÓN
+        Button(
+            onClick = { mostrarDialogoLogout = true },
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Cerrar Sesión")
+        }
+
+        // DIÁLOGO DE CONFIRMACIÓN DE CIERRE DE SESIÓN
+        if (mostrarDialogoLogout) {
+            AlertDialog(
+                onDismissRequest = { mostrarDialogoLogout = false },
+                title = { Text("Confirmar Cierre de Sesión") },
+                text = { Text("¿Desea cerrar la sesión actual? Sus datos y documentos seguirán guardados en SQLite.") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            mostrarDialogoLogout = false
+                            SessionManager.cerrarSesion(context)
+                            onCerrarSesion()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Sí, Salir")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { mostrarDialogoLogout = false }) {
+                        Text("Cancelar")
+                    }
+                }
             )
         }
     }

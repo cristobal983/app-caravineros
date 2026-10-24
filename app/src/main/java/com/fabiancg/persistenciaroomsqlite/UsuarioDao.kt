@@ -4,26 +4,36 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Data Access Object (DAO) para operaciones de autenticación y gestión de usuarios en SQLite.
+ * DAO para la tabla "usuarios" en SQLite.
+ * Permite:
+ * 1. Registrar usuarios (Insert)
+ * 2. Iniciar sesión (Select con email/RUT y contraseña)
+ * 3. Editar datos de usuario (Update)
  */
 @Dao
 interface UsuarioDao {
 
-    @Insert(onConflict = OnConflictStrategy.ABORT)
-    suspend fun registrar(usuario: Usuario): Long
+    // Registrar nuevo usuario
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertar(usuario: Usuario): Long
 
-    @Query("SELECT * FROM usuarios WHERE LOWER(email) = LOWER(:identificador) OR rut = :identificador LIMIT 1")
-    suspend fun buscarPorEmailORut(identificador: String): Usuario?
+    // Editar / Actualizar datos del usuario existente
+    @Update
+    suspend fun actualizar(usuario: Usuario): Int
 
-    @Query("SELECT * FROM usuarios WHERE (LOWER(email) = LOWER(:identificador) OR rut = :identificador) AND contrasena = :contrasena LIMIT 1")
-    suspend fun login(identificador: String, contrasena: String): Usuario?
+    // Iniciar sesión
+    @Query("SELECT * FROM usuarios WHERE (email = :login OR rut = :login) AND contrasena = :clave LIMIT 1")
+    suspend fun iniciarSesion(login: String, clave: String): Usuario?
 
-    @Query("SELECT * FROM usuarios ORDER BY id DESC")
-    fun obtenerTodos(): Flow<List<Usuario>>
+    // Buscar por ID
+    @Query("SELECT * FROM usuarios WHERE id = :id LIMIT 1")
+    suspend fun obtenerPorId(id: Int): Usuario?
 
+    // Contar usuarios registrados
     @Query("SELECT COUNT(*) FROM usuarios")
     suspend fun contarUsuarios(): Int
 }

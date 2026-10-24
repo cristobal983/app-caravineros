@@ -5,29 +5,26 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-// Define las entidades y la versión de la base de datos local SQLite con Room.
+/**
+ * Base de Datos Room SQLite de la aplicación.
+ * Versión simplificada y limpia para nivel académico:
+ * 1. Persona (ejercicio base de clase)
+ * 2. Usuario (registro, login y edición de datos de usuario)
+ * 3. DocumentoItem (archivos nativos PDF y Word)
+ */
 @Database(
     entities = [
         Persona::class,
-        IntentoEvaluacion::class,
         Usuario::class,
         DocumentoItem::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
-    // DAO de personas (ejercicio y actividades previas de clase)
     abstract fun personaDao(): PersonaDAO
-
-    // DAO de intentos de autoevaluación / trivias ESFOCAR
-    abstract fun intentoEvaluacionDao(): IntentoEvaluacionDao
-
-    // DAO de usuarios (registro y login con validaciones)
     abstract fun usuarioDao(): UsuarioDao
-
-    // DAO de documentos y rúbricas (archivos nativos PDF y Word)
     abstract fun documentoDao(): DocumentoDao
 
     companion object {

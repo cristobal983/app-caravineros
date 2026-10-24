@@ -12,7 +12,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,13 +25,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -57,7 +52,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -74,31 +68,39 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Pantalla de Gestión de Rúbricas y Documentos (PDF y Word).
+ * Cumple con los requerimientos específicos:
+ * 1. Cargar documentos
+ * 2. Ver documentos (con visor nativo mediante FileProvider)
+ * 3. Eliminar documento (con confirmación y borrado de SQLite)
+ */
 @Composable
 fun DocumentsScreen() {
     val context = LocalContext.current
     val dao = remember { AppDatabase.getDatabase(context).documentoDao() }
     val scope = rememberCoroutineScope()
 
+    // Lista reactiva de documentos leídos desde Room SQLite
     val listaDocumentos by dao.obtenerTodos().collectAsState(initial = emptyList())
-    val totalDocumentos by dao.contarTotal().collectAsState(initial = 0)
 
+    // Estados para alertas y diálogos
     var documentoAEliminar by remember { mutableStateOf<DocumentoItem?>(null) }
-    var documentoVisualizando by remember { mutableStateOf<DocumentoItem?>(null) }
-    var mensajeNotificacion by remember { mutableStateOf<String?>(null) }
+    var mensajeAviso by remember { mutableStateOf<String?>(null) }
+    var mostrarDialogoVisorNoEncontrado by remember { mutableStateOf(false) }
 
-    // Launcher nativo del sistema operativo para seleccionar archivos (PDF, Word, etc.)
+    // 1. CARGAR DOCUMENTOS: Selector nativo de Android
     val selectorArchivosLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
             scope.launch {
-                val resultado = importarArchivoNativo(context, uri)
-                if (resultado != null) {
-                    dao.insertar(resultado)
-                    mensajeNotificacion = "Documento '${resultado.nombre}' cargado y guardado en SQLite."
+                val nuevoDoc = copiarArchivoASqLite(context, uri)
+                if (nuevoDoc != null) {
+                    dao.insertar(nuevoDoc)
+                    mensajeAviso = "¡Archivo '${nuevoDoc.nombre}' cargado con éxito en SQLite!"
                 } else {
-                    mensajeNotificacion = "No fue posible procesar el archivo seleccionado."
+                    mensajeAviso = "No se pudo cargar el archivo seleccionado."
                 }
             }
         }
@@ -107,40 +109,40 @@ fun DocumentsScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
-        // Título y descripción
         Text(
-            text = "Rúbricas y Documentos Nativos",
+            text = "Rúbricas y Documentos",
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
         )
         Text(
-            text = "Gestión de archivos institucionales (PDF y Word) con persistencia local.",
+            text = "Archivos nativos (PDF / Word) guardados en SQLite",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Botones de acción: Cargar documento nativo y precargar ejemplos para evaluación
+        // BOTONES DE ACCIÓN (CARGAR Y PRECARGAR RÚBRICAS)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(
                 onClick = {
-                    // Abrir selector nativo de archivos del sistema
-                    val tiposMime = arrayOf(
-                        "application/pdf",
-                        "application/msword",
-                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                        "*/*"
+                    // Abre el explorador de archivos nativo para PDF y Word
+                    selectorArchivosLauncher.launch(
+                        arrayOf(
+                            "application/pdf",
+                            "application/msword",
+                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        )
                     )
-                    selectorArchivosLauncher.launch(tiposMime)
                 },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp)
+                modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(6.dp))
@@ -150,12 +152,11 @@ fun DocumentsScreen() {
             OutlinedButton(
                 onClick = {
                     scope.launch {
-                        precargarDocumentosEjemplo(context, dao)
-                        mensajeNotificacion = "Rúbricas de ejemplo generadas exitosamente."
+                        precargarRubricasEjemplo(context, dao)
+                        mensajeAviso = "¡Rúbricas de ejemplo creadas y guardadas en SQLite!"
                     }
                 },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp)
+                modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Default.AutoAwesome, contentDescription = null)
                 Spacer(modifier = Modifier.width(6.dp))
@@ -163,145 +164,145 @@ fun DocumentsScreen() {
             }
         }
 
-        // Banner informativo / feedback
+        // MENSAJE ANIMADO DE CONFIRMACIÓN
         AnimatedVisibility(
-            visible = mensajeNotificacion != null,
+            visible = mensajeAviso != null,
             enter = fadeIn(),
             exit = fadeOut()
         ) {
             Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 10.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    .padding(vertical = 8.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = mensajeNotificacion ?: "",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        text = mensajeAviso ?: "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.weight(1f)
                     )
-                    IconButton(onClick = { mensajeNotificacion = null }) {
-                        Text("✕", fontWeight = FontWeight.Bold)
+                    TextButton(onClick = { mensajeAviso = null }) {
+                        Text("OK")
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        // Contador de documentos
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Documentos almacenados ($totalDocumentos)",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        Text(
+            text = "Documentos Guardados (${listaDocumentos.size})",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // LISTADO DE DOCUMENTOS EN ROOM SQLITE
         if (listaDocumentos.isEmpty()) {
-            Card(
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 24.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "No hay documentos cargados",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Pulsa 'Cargar Archivo' para seleccionar un PDF o Word desde tu dispositivo, o 'Cargar Rúbricas' para generar archivos de prueba.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = "Aún no hay documentos cargados.\nPresione 'Cargar Archivo' o 'Cargar Rúbricas' para comenzar.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(listaDocumentos, key = { it.id }) { doc ->
-                    DocumentoCard(
-                        documento = doc,
-                        onVisualizar = {
-                            visualizarDocumentoNativo(context, doc) {
-                                // Fallback dialog si el dispositivo no tiene app asociada
-                                documentoVisualizando = doc
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Icono según tipo (PDF en rojo, Word en azul)
+                            Icon(
+                                imageVector = if (doc.tipo == "PDF") Icons.Default.PictureAsPdf else Icons.Default.Description,
+                                contentDescription = null,
+                                tint = if (doc.tipo == "PDF") Color(0xFFD32F2F) else Color(0xFF1976D2),
+                                modifier = Modifier.size(36.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = doc.nombre,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = "Tipo: ${doc.tipo} | Fecha: ${doc.fechaCarga}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                        },
-                        onEliminar = {
-                            documentoAEliminar = doc
+
+                            // 2. VER DOCUMENTO: Botón para abrir el visor nativo
+                            IconButton(onClick = {
+                                abrirDocumentoNativo(context, doc) {
+                                    mostrarDialogoVisorNoEncontrado = true
+                                }
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Visibility,
+                                    contentDescription = "Ver documento",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            // 3. ELIMINAR DOCUMENTO: Botón para borrar de SQLite
+                            IconButton(onClick = { documentoAEliminar = doc }) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Eliminar",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
-                    )
+                    }
                 }
             }
         }
     }
 
-    // Diálogo de Confirmación para Eliminar Documento
+    // DIÁLOGO DE CONFIRMACIÓN PARA ELIMINAR DOCUMENTO
     if (documentoAEliminar != null) {
         val doc = documentoAEliminar!!
         AlertDialog(
             onDismissRequest = { documentoAEliminar = null },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
-                )
-            },
-            title = {
-                Text("Eliminar Documento")
-            },
-            text = {
-                Text("¿Está seguro de que desea eliminar permanentemente el documento '${doc.nombre}' del almacenamiento y de la base de datos?")
-            },
+            title = { Text("Eliminar Documento") },
+            text = { Text("¿Desea eliminar '${doc.nombre}' de la base de datos local SQLite?") },
             confirmButton = {
                 Button(
                     onClick = {
                         scope.launch {
-                            // 1. Eliminar archivo físico
+                            // Borra el archivo físico del almacenamiento interno
                             val archivo = File(doc.rutaArchivo)
-                            if (archivo.exists()) {
-                                archivo.delete()
-                            }
-                            // 2. Eliminar registro de SQLite Room
+                            if (archivo.exists()) archivo.delete()
+
+                            // Borra el registro de SQLite
                             dao.eliminarPorId(doc.id)
-                            mensajeNotificacion = "Documento eliminado correctamente."
+                            mensajeAviso = "Documento '${doc.nombre}' eliminado correctamente."
                             documentoAEliminar = null
                         }
                     },
@@ -318,162 +319,50 @@ fun DocumentsScreen() {
         )
     }
 
-    // Diálogo informativo de previsualización (cuando el emulador no tiene app de Word/PDF instalada)
-    if (documentoVisualizando != null) {
-        val doc = documentoVisualizando!!
+    // DIÁLOGO INFORMATIVO SI EL EMULADOR NO TIENE UN VISOR INSTALADO
+    if (mostrarDialogoVisorNoEncontrado) {
         AlertDialog(
-            onDismissRequest = { documentoVisualizando = null },
-            icon = {
-                Icon(
-                    imageVector = if (doc.tipo == "PDF") Icons.Default.PictureAsPdf else Icons.Default.Description,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            },
-            title = {
-                Text(doc.nombre)
-            },
+            onDismissRequest = { mostrarDialogoVisorNoEncontrado = false },
+            title = { Text("Apertura de Documento") },
             text = {
-                Column {
-                    Text("Detalles del archivo nativo:", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("• Formato: ${doc.tipo}")
-                    Text("• Tamaño: ${doc.tamanoBytes / 1024} KB")
-                    Text("• Fecha de Carga: ${doc.fechaCarga}")
-                    Text("• Categoría: ${doc.categoria}")
-                    Text("• Ubicación Local: ${doc.rutaArchivo}")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "Nota: Este archivo fue compartido mediante FileProvider nativo de Android. Para abrirlo directamente se requiere una app lectora instalada en el dispositivo.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text("El archivo se encuentra guardado correctamente en la memoria interna privada de la aplicación.\n\nPara visualizarlo externamente se requiere una app lectora (como Adobe Reader o Google Drive Viewer en el teléfono).")
             },
             confirmButton = {
-                TextButton(onClick = { documentoVisualizando = null }) {
-                    Text("Cerrar")
+                Button(onClick = { mostrarDialogoVisorNoEncontrado = false }) {
+                    Text("Entendido")
                 }
             }
         )
     }
 }
 
-@Composable
-private fun DocumentoCard(
-    documento: DocumentoItem,
-    onVisualizar: () -> Unit,
-    onEliminar: () -> Unit
-) {
-    val esPdf = documento.tipo.contains("PDF", ignoreCase = true)
-    val colorIcono = if (esPdf) Color(0xFFC62828) else Color(0xFF1565C0)
-    val icono = if (esPdf) Icons.Default.PictureAsPdf else Icons.Default.Description
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onVisualizar() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(colorIcono.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icono,
-                    contentDescription = null,
-                    tint = colorIcono,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = documento.nombre,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "${documento.categoria} • ${documento.tamanoBytes / 1024} KB",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "Cargado: ${documento.fechaCarga}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            }
-
-            IconButton(onClick = onVisualizar) {
-                Icon(
-                    imageVector = Icons.Default.Visibility,
-                    contentDescription = "Visualizar documento",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            IconButton(onClick = onEliminar) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Eliminar documento",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-        }
-    }
-}
-
 /**
- * Importa un archivo seleccionado con el selector nativo y lo guarda de forma permanente
- * en context.filesDir para garantizar acceso offline y compatibilidad con FileProvider.
+ * Función que copia el archivo seleccionado a la carpeta interna privada de la app
+ * y retorna el objeto DocumentoItem para guardarlo en Room SQLite.
  */
-private suspend fun importarArchivoNativo(context: Context, uri: Uri): DocumentoItem? = withContext(Dispatchers.IO) {
+private suspend fun copiarArchivoASqLite(context: Context, uri: Uri): DocumentoItem? = withContext(Dispatchers.IO) {
     try {
         var nombreArchivo = "documento_${System.currentTimeMillis()}"
-        var tamano: Long = 0
-
-        // Obtener nombre y tamaño reales a través de ContentResolver
         context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
             val nombreIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            val tamanoIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-            if (cursor.moveToFirst()) {
-                if (nombreIndex != -1) nombreArchivo = cursor.getString(nombreIndex)
-                if (tamanoIndex != -1) tamano = cursor.getLong(tamanoIndex)
+            if (cursor.moveToFirst() && nombreIndex != -1) {
+                nombreArchivo = cursor.getString(nombreIndex)
             }
         }
 
-        val tipo = when {
-            nombreArchivo.endsWith(".pdf", ignoreCase = true) -> "PDF"
-            nombreArchivo.endsWith(".doc", ignoreCase = true) || nombreArchivo.endsWith(".docx", ignoreCase = true) -> "WORD"
-            else -> "DOCUMENTO"
+        val tipo = if (nombreArchivo.endsWith(".docx", ignoreCase = true) || nombreArchivo.endsWith(".doc", ignoreCase = true)) {
+            "WORD"
+        } else {
+            "PDF"
         }
 
-        // Copiar a almacenamiento interno privado
-        val carpetaDestino = File(context.filesDir, "rubricas").apply { mkdirs() }
-        val archivoLocal = File(carpetaDestino, "${System.currentTimeMillis()}_$nombreArchivo")
+        val carpeta = File(context.filesDir, "documentos").apply { mkdirs() }
+        val archivoLocal = File(carpeta, nombreArchivo)
 
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            FileOutputStream(archivoLocal).use { output ->
-                input.copyTo(output)
+        context.contentResolver.openInputStream(uri)?.use { entrada ->
+            FileOutputStream(archivoLocal).use { salida ->
+                entrada.copyTo(salida)
             }
-        }
-
-        if (tamano == 0L) {
-            tamano = archivoLocal.length()
         }
 
         val fechaStr = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
@@ -481,7 +370,7 @@ private suspend fun importarArchivoNativo(context: Context, uri: Uri): Documento
         DocumentoItem(
             nombre = nombreArchivo,
             tipo = tipo,
-            tamanoBytes = tamano,
+            tamanoBytes = archivoLocal.length(),
             rutaArchivo = archivoLocal.absolutePath,
             fechaCarga = fechaStr,
             categoria = "Rúbrica Institucional"
@@ -493,69 +382,51 @@ private suspend fun importarArchivoNativo(context: Context, uri: Uri): Documento
 }
 
 /**
- * Lanza un Intent nativo (ACTION_VIEW) para que el visor predeterminado del sistema
- * (Adobe Reader, Google Drive PDF Viewer, Microsoft Word, etc.) abra el archivo.
+ * Abre el documento nativo usando Intent(ACTION_VIEW) y FileProvider.
  */
-private fun visualizarDocumentoNativo(
-    context: Context,
-    documento: DocumentoItem,
-    onNoViewerFound: () -> Unit
-) {
-    val archivo = File(documento.rutaArchivo)
+private fun abrirDocumentoNativo(context: Context, doc: DocumentoItem, onNoViewer: () -> Unit) {
+    val archivo = File(doc.rutaArchivo)
     if (!archivo.exists()) {
-        Toast.makeText(context, "El archivo no se encuentra en el almacenamiento local.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "El archivo no se encuentra en el almacenamiento.", Toast.LENGTH_SHORT).show()
         return
     }
 
     try {
-        val uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            archivo
-        )
-
-        val mimeType = when (documento.tipo) {
-            "PDF" -> "application/pdf"
-            "WORD" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            else -> "*/*"
-        }
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", archivo)
+        val mimeType = if (doc.tipo == "PDF") "application/pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, mimeType)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-
         context.startActivity(intent)
     } catch (e: ActivityNotFoundException) {
-        // En emuladores sin visor de PDF o Word instalado
-        onNoViewerFound()
+        onNoViewer()
     } catch (e: Exception) {
-        onNoViewerFound()
+        onNoViewer()
     }
 }
 
 /**
- * Genera archivos de ejemplo (PDF y Word) en context.filesDir y los guarda en SQLite
- * para que el profesor/docente pueda probar de inmediato la funcionalidad sin requerir archivos previos.
+ * Precarga 2 rúbricas de ejemplo para demostración rápida en clase ante el profesor.
  */
-private suspend fun precargarDocumentosEjemplo(
+private suspend fun precargarRubricasEjemplo(
     context: Context,
     dao: com.fabiancg.persistenciaroomsqlite.DocumentoDao
 ) = withContext(Dispatchers.IO) {
-    val carpeta = File(context.filesDir, "rubricas").apply { mkdirs() }
+    val carpeta = File(context.filesDir, "documentos").apply { mkdirs() }
     val fecha = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
 
     val ejemplos = listOf(
-        Triple("Rubrica_Evaluacion_Tiro_Policial.pdf", "PDF", "Rúbrica Oficial de Tiro y Precaución Armamento"),
-        Triple("Guia_Procedimiento_Detencion_Flagrante.docx", "WORD", "Guía Técnica de Procedimientos Policiales"),
-        Triple("Reglamento_Disciplinario_ESFOCAR.pdf", "PDF", "Reglamento Interno Institucional")
+        Pair("Rubrica_Evaluacion_Tiro_Policial.pdf", "PDF"),
+        Pair("Pauta_Detencion_en_Flagrancia.docx", "WORD")
     )
 
-    for ((nombre, tipo, cat) in ejemplos) {
+    for ((nombre, tipo) in ejemplos) {
         val archivo = File(carpeta, nombre)
         if (!archivo.exists()) {
-            archivo.writeText("ESCUELA DE FORMACIÓN DE CARABINEROS\nDocumento: $nombre\nTipo: $tipo\nFecha: $fecha\n\nEste es un documento nativo generado para pruebas y evaluación de la Asignatura DSY1105.")
+            archivo.writeText("ESCUELA DE FORMACIÓN DE CARABINEROS\nRúbrica Oficial: $nombre\nTipo: $tipo\nFecha: $fecha\n\nDocumento institucional guardado en Room SQLite.")
         }
         val item = DocumentoItem(
             nombre = nombre,
@@ -563,7 +434,7 @@ private suspend fun precargarDocumentosEjemplo(
             tamanoBytes = archivo.length(),
             rutaArchivo = archivo.absolutePath,
             fechaCarga = fecha,
-            categoria = cat
+            categoria = "Rúbrica Institucional"
         )
         dao.insertar(item)
     }

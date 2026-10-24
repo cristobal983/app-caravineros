@@ -4,21 +4,16 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -45,115 +40,89 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.fabiancg.persistenciaroomsqlite.AppDatabase
-import com.fabiancg.persistenciaroomsqlite.DemoPersistenciaScreen
 import com.fabiancg.persistenciaroomsqlite.SessionManager
 import com.fabiancg.persistenciaroomsqlite.Usuario
 import com.fabiancg.persistenciaroomsqlite.ui.navigation.NavigationItem
 import com.fabiancg.persistenciaroomsqlite.ui.screens.AuthScreen
-import com.fabiancg.persistenciaroomsqlite.ui.screens.CasesScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.DocumentsScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.HomeScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.ProfileScreen
-import com.fabiancg.persistenciaroomsqlite.ui.screens.ProgressScreen
-import com.fabiancg.persistenciaroomsqlite.ui.screens.QuizScreen
-import com.fabiancg.persistenciaroomsqlite.ui.screens.StudyScreen
 import kotlinx.coroutines.launch
 
+/**
+ * Coordinador de Navegación de la Aplicación.
+ * Cumple con los requerimientos de la pauta:
+ * 1. Menú lateral (Navigation Drawer)
+ * 2. Barra de navegación superior (TopAppBar)
+ * 3. Barra de navegación inferior (NavigationBar)
+ * 4. Control de sesiones (Login, Registro, Pantalla Principal y Cierre de Sesión)
+ * 5. Transición animada fluida con Crossfade.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val personaDao = remember { AppDatabase.getDatabase(context).personaDao() }
 
-    // Estado reactivo de sesión del usuario (si es null, muestra pantalla de Login / Registro)
+    // Estado reactivo de usuario autenticado
     var usuarioActivo by remember { mutableStateOf<Usuario?>(SessionManager.obtenerUsuarioActivo(context)) }
 
-    // Ruta actual de la aplicación
+    // Ruta actual de navegación
     var seccionActual by rememberSaveable { mutableStateOf("home") }
 
-    // Animación de transición entre estado no autenticado (Login/Registro) y estado autenticado
-    Crossfade(targetState = usuarioActivo != null, label = "AuthTransition") { estaAutenticado ->
-        if (!estaAutenticado) {
+    // Transición animada entre pantalla de Login/Registro y la App Autenticada
+    Crossfade(targetState = usuarioActivo != null, label = "AuthCrossfade") { estaLogueado ->
+        if (!estaLogueado) {
+            // VISTA 1 & 2: INICIAR SESIÓN Y REGISTRO DE USUARIOS
             AuthScreen(
-                onLoginSuccess = { usuarioLogueado ->
-                    usuarioActivo = usuarioLogueado
+                onLoginSuccess = { usuario ->
+                    usuarioActivo = usuario
                     seccionActual = NavigationItem.Home.route
                 }
             )
         } else {
             val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-            // Menú lateral (Navigation Drawer)
+            // REQUERIMIENTO: MENÚ LATERAL (Navigation Drawer)
             ModalNavigationDrawer(
                 drawerState = drawerState,
                 drawerContent = {
-                    ModalDrawerSheet(
-                        drawerContainerColor = MaterialTheme.colorScheme.surface
-                    ) {
-                        // Encabezado institucional del menú lateral
+                    ModalDrawerSheet {
+                        // Encabezado del menú
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                                .padding(20.dp)
+                                .background(MaterialTheme.colorScheme.primary)
+                                .padding(24.dp)
                         ) {
                             Column {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Security,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onPrimary,
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            text = "ESFOCAR",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                        Text(
-                                            text = "Carabineros de Chile",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(14.dp))
-
+                                Icon(
+                                    imageVector = Icons.Default.Shield,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.height(42.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = usuarioActivo?.nombre ?: "Aspirante a Carabinero",
-                                    style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    style = MaterialTheme.typography.titleMedium
                                 )
                                 Text(
-                                    text = "${usuarioActivo?.escalafon} • ${usuarioActivo?.rut}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    text = "ESFOCAR - Duoc UC DSY1105",
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                                    style = MaterialTheme.typography.bodySmall
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        // Opciones de navegación del menú lateral
+                        // Opciones de navegación en el menú lateral
                         NavigationItem.drawerItems.forEach { item ->
                             val seleccionado = seccionActual == item.route
                             NavigationDrawerItem(
@@ -170,7 +139,7 @@ fun MainScreen() {
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
 
-                        // Opción de Cierre de Sesión en el menú lateral
+                        // Opción para Cerrar Sesión desde el menú lateral
                         NavigationDrawerItem(
                             icon = {
                                 Icon(
@@ -199,11 +168,17 @@ fun MainScreen() {
                 }
             ) {
                 Scaffold(
+                    // REQUERIMIENTO: BARRA DE NAVEGACIÓN SUPERIOR
                     topBar = {
                         TopAppBar(
                             title = {
                                 Text(
-                                    text = obtenerTituloBarra(seccionActual),
+                                    text = when (seccionActual) {
+                                        NavigationItem.Home.route -> "Inicio - ESFOCAR"
+                                        NavigationItem.Documents.route -> "Rúbricas y Documentos"
+                                        NavigationItem.Profile.route -> "Mi Perfil de Usuario"
+                                        else -> "ESFOCAR App"
+                                    },
                                     fontWeight = FontWeight.Bold
                                 )
                             },
@@ -211,7 +186,7 @@ fun MainScreen() {
                                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                     Icon(
                                         imageVector = Icons.Default.Menu,
-                                        contentDescription = "Abrir menú lateral"
+                                        contentDescription = "Abrir Menú Lateral"
                                     )
                                 }
                             },
@@ -219,7 +194,7 @@ fun MainScreen() {
                                 IconButton(onClick = { seccionActual = NavigationItem.Profile.route }) {
                                     Icon(
                                         imageVector = Icons.Default.AccountCircle,
-                                        contentDescription = "Ver Perfil de Usuario"
+                                        contentDescription = "Ver Perfil"
                                     )
                                 }
                             },
@@ -231,6 +206,7 @@ fun MainScreen() {
                             )
                         )
                     },
+                    // REQUERIMIENTO: BARRA DE NAVEGACIÓN INFERIOR
                     bottomBar = {
                         NavigationBar {
                             NavigationItem.bottomBarItems.forEach { item ->
@@ -238,15 +214,8 @@ fun MainScreen() {
                                 NavigationBarItem(
                                     selected = seleccionado,
                                     onClick = { seccionActual = item.route },
-                                    icon = {
-                                        Icon(
-                                            imageVector = item.icon,
-                                            contentDescription = item.title
-                                        )
-                                    },
-                                    label = {
-                                        Text(text = item.title)
-                                    }
+                                    icon = { Icon(item.icon, contentDescription = item.title) },
+                                    label = { Text(item.title) }
                                 )
                             }
                         }
@@ -257,49 +226,35 @@ fun MainScreen() {
                             .fillMaxSize()
                             .padding(innerPadding)
                     ) {
-                        Crossfade(targetState = seccionActual, label = "ScreenTransition") { targetRoute ->
-                            when (targetRoute) {
-                                NavigationItem.Home.route -> HomeScreen(
-                                    onNavigateToSection = { destino -> seccionActual = destino.route }
-                                )
-                                NavigationItem.Study.route -> StudyScreen()
-                                NavigationItem.Quiz.route -> QuizScreen()
-                                NavigationItem.Cases.route -> CasesScreen()
-                                NavigationItem.Documents.route -> DocumentsScreen()
-                                NavigationItem.Progress.route -> ProgressScreen()
-                                NavigationItem.Profile.route -> ProfileScreen(
-                                    usuario = usuarioActivo,
-                                    onCerrarSesion = {
-                                        usuarioActivo = null
-                                        seccionActual = NavigationItem.Home.route
-                                    }
-                                )
-                                NavigationItem.Demo.route -> DemoPersistenciaScreen(dao = personaDao)
-                                else -> HomeScreen(
-                                    onNavigateToSection = { destino -> seccionActual = destino.route }
-                                )
+                        // Animación suave de cambio de pantalla
+                        Crossfade(targetState = seccionActual, label = "MainContentTransition") { ruta ->
+                            when (ruta) {
+                                NavigationItem.Home.route -> {
+                                    HomeScreen(
+                                        usuario = usuarioActivo,
+                                        onIrADocumentos = { seccionActual = NavigationItem.Documents.route },
+                                        onIrAPerfil = { seccionActual = NavigationItem.Profile.route }
+                                    )
+                                }
+                                NavigationItem.Documents.route -> {
+                                    DocumentsScreen()
+                                }
+                                NavigationItem.Profile.route -> {
+                                    ProfileScreen(
+                                        usuario = usuarioActivo,
+                                        onUsuarioActualizado = { nuevo ->
+                                            usuarioActivo = nuevo
+                                        },
+                                        onCerrarSesion = {
+                                            usuarioActivo = null
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
         }
-    }
-}
-
-/**
- * Retorna el título dinámico a mostrar en la TopAppBar según la ruta actual.
- */
-private fun obtenerTituloBarra(ruta: String): String {
-    return when (ruta) {
-        NavigationItem.Home.route -> "ESFOCAR - Inicio"
-        NavigationItem.Study.route -> "Materias de Estudio"
-        NavigationItem.Quiz.route -> "Trivias y Autoevaluación"
-        NavigationItem.Cases.route -> "Casos Prácticos"
-        NavigationItem.Documents.route -> "Rúbricas y Documentos"
-        NavigationItem.Progress.route -> "Historial y Progreso"
-        NavigationItem.Profile.route -> "Perfil del Aspirante"
-        NavigationItem.Demo.route -> "Laboratorio de Persistencia"
-        else -> "App de Estudio ESFOCAR"
     }
 }
