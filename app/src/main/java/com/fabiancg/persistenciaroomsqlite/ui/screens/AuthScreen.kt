@@ -3,6 +3,8 @@ package com.fabiancg.persistenciaroomsqlite.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,7 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.SupervisorAccount
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -30,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -46,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -53,6 +58,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fabiancg.persistenciaroomsqlite.AppDatabase
+import com.fabiancg.persistenciaroomsqlite.R
 import com.fabiancg.persistenciaroomsqlite.SessionManager
 import com.fabiancg.persistenciaroomsqlite.Usuario
 import kotlinx.coroutines.launch
@@ -85,6 +91,7 @@ fun AuthScreen(
     var loginClaveVisible by rememberSaveable { mutableStateOf(false) }
 
     // Estados para Registro de Usuario
+    var regRol by rememberSaveable { mutableStateOf("Alumno") } // "Alumno" o "Docente"
     var regNombre by rememberSaveable { mutableStateOf("") }
     var regRut by rememberSaveable { mutableStateOf("") }
     var regEmail by rememberSaveable { mutableStateOf("") }
@@ -105,12 +112,11 @@ fun AuthScreen(
     ) {
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Encabezado institucional ESFOCAR
-        Icon(
-            imageVector = Icons.Default.Shield,
-            contentDescription = "Escudo ESFOCAR",
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.height(56.dp)
+        // Encabezado institucional con Escudo Oficial ESFOCAR
+        Image(
+            painter = painterResource(id = R.drawable.escudo_esfocar),
+            contentDescription = "Escudo Oficial ESFOCAR",
+            modifier = Modifier.height(84.dp)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -246,27 +252,54 @@ fun AuthScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Botón Demo para revisión rápida del profesor
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                // Usuario de prueba rápido
-                                val demo = Usuario(
-                                    id = 999,
-                                    rut = "12345678-9",
-                                    nombre = "Aspirante Cristóbal Flores",
-                                    email = "aspirante@esfocar.cl",
-                                    contrasena = "123456",
-                                    escalafon = "Aspirante a Carabinero",
-                                    fechaRegistro = "2026-10-23"
-                                )
-                                SessionManager.guardarSesion(context, demo)
-                                onLoginSuccess(demo)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                    // Botones Demo para revisión rápida del profesor
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Acceso Rápido Demo (Profesor)")
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    val demoDocente = Usuario(
+                                        id = 998,
+                                        rut = "11223344-5",
+                                        nombre = "Prof. Carlos Gómez",
+                                        email = "docente@esfocar.cl",
+                                        contrasena = "123456",
+                                        rol = "Docente",
+                                        escalafon = "Profesor Instructor ESFOCAR",
+                                        fechaRegistro = "2026-10-23"
+                                    )
+                                    SessionManager.guardarSesion(context, demoDocente)
+                                    onLoginSuccess(demoDocente)
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Demo Docente", style = MaterialTheme.typography.labelSmall)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    val demoAlumno = Usuario(
+                                        id = 999,
+                                        rut = "12345678-9",
+                                        nombre = "Aspirante Cristóbal Flores",
+                                        email = "aspirante@esfocar.cl",
+                                        contrasena = "123456",
+                                        rol = "Alumno",
+                                        escalafon = "Aspirante a Carabinero",
+                                        fechaRegistro = "2026-10-23"
+                                    )
+                                    SessionManager.guardarSesion(context, demoAlumno)
+                                    onLoginSuccess(demoAlumno)
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Demo Alumno", style = MaterialTheme.typography.labelSmall)
+                        }
                     }
 
                 } else {
@@ -274,10 +307,102 @@ fun AuthScreen(
                     // 2. VISTA DE REGISTRO DE USUARIOS
                     // ==========================================
                     Text(
-                        text = "Registro de Nuevo Aspirante",
+                        text = "Registro de Nuevo Usuario",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // REQUERIMIENTO: SELECCIÓN DE ROL (DOCENTE O ALUMNO)
+                    Text(
+                        text = "¿Eres Docente o Alumno?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Tarjeta Rol Alumno
+                        OutlinedCard(
+                            onClick = { regRol = "Alumno" },
+                            modifier = Modifier.weight(1f),
+                            border = BorderStroke(
+                                width = if (regRol == "Alumno") 2.dp else 1.dp,
+                                color = if (regRol == "Alumno") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = if (regRol == "Alumno") MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f) else MaterialTheme.colorScheme.surface
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 10.dp, horizontal = 6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.School,
+                                    contentDescription = null,
+                                    tint = if (regRol == "Alumno") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Alumno",
+                                    fontWeight = if (regRol == "Alumno") FontWeight.Bold else FontWeight.Medium,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = if (regRol == "Alumno") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Aspirante ESFOCAR",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // Tarjeta Rol Docente
+                        OutlinedCard(
+                            onClick = { regRol = "Docente" },
+                            modifier = Modifier.weight(1f),
+                            border = BorderStroke(
+                                width = if (regRol == "Docente") 2.dp else 1.dp,
+                                color = if (regRol == "Docente") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = if (regRol == "Docente") MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f) else MaterialTheme.colorScheme.surface
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 10.dp, horizontal = 6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SupervisorAccount,
+                                    contentDescription = null,
+                                    tint = if (regRol == "Docente") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Docente",
+                                    fontWeight = if (regRol == "Docente") FontWeight.Bold else FontWeight.Medium,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = if (regRol == "Docente") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Profesor Instructor",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // Nombre Completo
@@ -395,16 +520,23 @@ fun AuthScreen(
                             // Si todo es válido, guardamos en la base de datos Room SQLite
                             scope.launch {
                                 val fechaHoy = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                                val escalafonSegunRol = if (regRol == "Docente") {
+                                    "Profesor Instructor ESFOCAR"
+                                } else {
+                                    "Aspirante a Carabinero"
+                                }
+
                                 val nuevoUsuario = Usuario(
                                     rut = regRut.trim(),
                                     nombre = regNombre.trim(),
                                     email = regEmail.trim(),
                                     contrasena = regClave.trim(),
-                                    escalafon = "Aspirante a Carabinero",
+                                    rol = regRol,
+                                    escalafon = escalafonSegunRol,
                                     fechaRegistro = fechaHoy
                                 )
                                 usuarioDao.insertar(nuevoUsuario)
-                                regExito = "¡Usuario registrado con éxito en SQLite! Ahora puede iniciar sesión."
+                                regExito = "¡Usuario ($regRol) registrado con éxito en SQLite! Ahora puede iniciar sesión."
 
                                 // Limpiamos los campos
                                 regNombre = ""
@@ -412,6 +544,7 @@ fun AuthScreen(
                                 regEmail = ""
                                 regClave = ""
                                 regConfirmarClave = ""
+                                regRol = "Alumno"
                             }
                         },
                         modifier = Modifier.fillMaxWidth()

@@ -1,5 +1,6 @@
 package com.fabiancg.persistenciaroomsqlite.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -31,9 +31,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fabiancg.persistenciaroomsqlite.AppDatabase
+import com.fabiancg.persistenciaroomsqlite.R
 import com.fabiancg.persistenciaroomsqlite.Usuario
 
 /**
@@ -64,12 +66,11 @@ fun HomeScreen(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Escudo y Bienvenida
-        Icon(
-            imageVector = Icons.Default.Shield,
-            contentDescription = "Escudo",
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(64.dp)
+        // Escudo Oficial ESFOCAR y Bienvenida
+        Image(
+            painter = painterResource(id = R.drawable.escudo_esfocar),
+            contentDescription = "Escudo Oficial ESFOCAR",
+            modifier = Modifier.size(80.dp)
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -81,19 +82,27 @@ fun HomeScreen(
             color = MaterialTheme.colorScheme.primary
         )
 
+        val etiquetaRol = if (usuario?.rol == "Docente") "Docente" else "Aspirante"
         Text(
-            text = "Aspirante: ${usuario?.nombre ?: "Alumno"}",
+            text = "$etiquetaRol: ${usuario?.nombre ?: "Usuario"}",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
 
         Text(
-            text = "RUT: ${usuario?.rut ?: ""}",
+            text = "Rol: ${usuario?.rol ?: "Alumno"} • ${usuario?.escalafon ?: "ESFOCAR"}",
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Medium
+        )
+
+        Text(
+            text = "RUT: ${usuario?.rut ?: ""}",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         // TARJETA DE RESUMEN
         Card(
@@ -109,6 +118,12 @@ fun HomeScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
+                    text = "• Rol activo: ${usuario?.rol ?: "Alumno"} (${usuario?.escalafon ?: "ESFOCAR"})",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
                     text = "• Modo: Offline-First con Room SQLite",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -116,7 +131,6 @@ fun HomeScreen(
                 Text(
                     text = "• Rúbricas y Documentos guardados: $totalDocumentos archivos",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }

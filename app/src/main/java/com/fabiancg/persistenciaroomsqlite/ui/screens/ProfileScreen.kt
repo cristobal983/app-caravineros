@@ -166,7 +166,9 @@ fun ProfileScreen(
                     // MODO SOLO LECTURA
                     Text("Correo: ${usuario?.email ?: ""}", style = MaterialTheme.typography.bodyLarge)
                     Spacer(modifier = Modifier.height(6.dp))
-                    Text("Escalafón: Aspirante a Carabinero (ESFOCAR)", style = MaterialTheme.typography.bodyMedium)
+                    Text("Rol en el Sistema: ${usuario?.rol ?: "Alumno"}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("Escalafón: ${usuario?.escalafon ?: "Aspirante a Carabinero"}", style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(6.dp))
                     Text("Base de datos: Room SQLite (Offline)", style = MaterialTheme.typography.bodyMedium)
                 } else {

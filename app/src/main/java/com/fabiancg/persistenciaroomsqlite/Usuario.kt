@@ -24,6 +24,7 @@ data class Usuario(
     val nombre: String,
     val email: String,
     val contrasena: String,
+    val rol: String = "Alumno", // "Docente" o "Alumno"
     val escalafon: String = "Aspirante a Carabinero",
     val fechaRegistro: String
 )

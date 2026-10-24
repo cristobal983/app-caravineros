@@ -1,6 +1,7 @@
 package com.fabiancg.persistenciaroomsqlite.ui
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -41,8 +41,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.fabiancg.persistenciaroomsqlite.R
 import com.fabiancg.persistenciaroomsqlite.SessionManager
 import com.fabiancg.persistenciaroomsqlite.Usuario
 import com.fabiancg.persistenciaroomsqlite.ui.navigation.NavigationItem
@@ -52,15 +54,7 @@ import com.fabiancg.persistenciaroomsqlite.ui.screens.HomeScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.ProfileScreen
 import kotlinx.coroutines.launch
 
-/**
- * Coordinador de Navegación de la Aplicación.
- * Cumple con los requerimientos de la pauta:
- * 1. Menú lateral (Navigation Drawer)
- * 2. Barra de navegación superior (TopAppBar)
- * 3. Barra de navegación inferior (NavigationBar)
- * 4. Control de sesiones (Login, Registro, Pantalla Principal y Cierre de Sesión)
- * 5. Transición animada fluida con Crossfade.
- */
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
@@ -99,22 +93,21 @@ fun MainScreen() {
                                 .padding(24.dp)
                         ) {
                             Column {
-                                Icon(
-                                    imageVector = Icons.Default.Shield,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.height(42.dp)
+                                Image(
+                                    painter = painterResource(id = R.drawable.escudo_esfocar),
+                                    contentDescription = "Escudo Oficial ESFOCAR",
+                                    modifier = Modifier.height(52.dp)
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = usuarioActivo?.nombre ?: "Aspirante a Carabinero",
+                                    text = usuarioActivo?.nombre ?: "Usuario ESFOCAR",
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimary,
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Text(
-                                    text = "ESFOCAR - Duoc UC DSY1105",
-                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                                    text = "${usuarioActivo?.rol ?: "Alumno"} • ${usuarioActivo?.escalafon ?: "ESFOCAR"}",
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }

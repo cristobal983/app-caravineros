@@ -14,6 +14,7 @@ object SessionManager {
     private const val KEY_USER_NAME = "user_name"
     private const val KEY_USER_EMAIL = "user_email"
     private const val KEY_USER_RUT = "user_rut"
+    private const val KEY_USER_ROL = "user_rol"
     private const val KEY_USER_ESCALAFON = "user_escalafon"
 
     private fun getPrefs(context: Context): SharedPreferences {
@@ -27,6 +28,7 @@ object SessionManager {
             putString(KEY_USER_NAME, usuario.nombre)
             putString(KEY_USER_EMAIL, usuario.email)
             putString(KEY_USER_RUT, usuario.rut)
+            putString(KEY_USER_ROL, usuario.rol)
             putString(KEY_USER_ESCALAFON, usuario.escalafon)
             apply()
         }
@@ -46,6 +48,7 @@ object SessionManager {
             nombre = prefs.getString(KEY_USER_NAME, "") ?: "",
             email = prefs.getString(KEY_USER_EMAIL, "") ?: "",
             contrasena = "", // No se almacena la contraseña en sesión por seguridad
+            rol = prefs.getString(KEY_USER_ROL, "Alumno") ?: "Alumno",
             escalafon = prefs.getString(KEY_USER_ESCALAFON, "Aspirante a Carabinero") ?: "Aspirante a Carabinero",
             fechaRegistro = ""
         )
