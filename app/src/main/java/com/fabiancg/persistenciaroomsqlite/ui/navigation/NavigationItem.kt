@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.SupervisorAccount
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
@@ -25,11 +26,14 @@ sealed class NavigationItem(
     // 3. Pantalla de Perfil y Cierre de Sesión
     object Profile : NavigationItem("profile", "Mi Perfil", Icons.Default.AccountCircle)
 
+    // 4. Pantalla de Panel de Administración (Modo Admin)
+    object Admin : NavigationItem("admin", "Modo Admin", Icons.Default.SupervisorAccount)
+
     companion object {
         // Elementos de la barra inferior (NavigationBar)
-        val bottomBarItems = listOf(Home, Documents, Profile)
+        val bottomBarItems = listOf(Home, Documents, Admin, Profile)
 
         // Elementos del menú lateral (Drawer)
-        val drawerItems = listOf(Home, Documents, Profile)
+        val drawerItems = listOf(Home, Documents, Admin, Profile)
     }
 }

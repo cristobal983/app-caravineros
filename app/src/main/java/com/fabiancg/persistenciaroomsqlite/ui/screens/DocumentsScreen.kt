@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.fabiancg.persistenciaroomsqlite.AppDatabase
 import com.fabiancg.persistenciaroomsqlite.DocumentoItem
+import com.fabiancg.persistenciaroomsqlite.Usuario
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -71,15 +73,22 @@ import java.util.Locale
 /**
  * Pantalla de Gestión de Rúbricas y Documentos (PDF y Word).
  * Cumple con los requerimientos específicos:
- * 1. Cargar documentos
- * 2. Ver documentos (con visor nativo mediante FileProvider)
- * 3. Eliminar documento (con confirmación y borrado de SQLite)
+ * 1. Cargar documentos (Exclusivo para rol Docente / Admin).
+ * 2. Ver documentos (con visor nativo mediante FileProvider) para Alumnos y Docentes.
+ * 3. Eliminar documento (Exclusivo para Docente / Admin).
  */
 @Composable
-fun DocumentsScreen() {
+fun DocumentsScreen(
+    usuarioActivo: Usuario? = null
+) {
     val context = LocalContext.current
     val dao = remember { AppDatabase.getDatabase(context).documentoDao() }
     val scope = rememberCoroutineScope()
+
+    // Permiso: Solo los Docentes (o Admin) pueden subir o eliminar archivos.
+    val esDocente = remember(usuarioActivo) {
+        usuarioActivo?.rol.equals("Docente", ignoreCase = true) || usuarioActivo?.rol.equals("Admin", ignoreCase = true)
+    }
 
     // Lista reactiva de documentos leídos desde Room SQLite
     val listaDocumentos by dao.obtenerTodos().collectAsState(initial = emptyList())
@@ -126,41 +135,65 @@ fun DocumentsScreen() {
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // BOTONES DE ACCIÓN (CARGAR Y PRECARGAR RÚBRICAS)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = {
-                    // Abre el explorador de archivos nativo para PDF y Word
-                    selectorArchivosLauncher.launch(
-                        arrayOf(
-                            "application/pdf",
-                            "application/msword",
-                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        if (esDocente) {
+            // REQUERIMIENTO: SOLO EL DOCENTE PUEDE SUBIR O CARGAR ARCHIVOS
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        selectorArchivosLauncher.launch(
+                            arrayOf(
+                                "application/pdf",
+                                "application/msword",
+                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            )
                         )
-                    )
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Cargar Archivo")
-            }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Cargar Archivo")
+                }
 
-            OutlinedButton(
-                onClick = {
-                    scope.launch {
-                        precargarRubricasEjemplo(context, dao)
-                        mensajeAviso = "¡Rúbricas de ejemplo creadas y guardadas en SQLite!"
-                    }
-                },
-                modifier = Modifier.weight(1f)
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            precargarRubricasEjemplo(context, dao)
+                            mensajeAviso = "¡Rúbricas de ejemplo creadas y guardadas en SQLite!"
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Cargar Rúbricas")
+                }
+            }
+        } else {
+            // REQUERIMIENTO: EL ALUMNO NO TIENE PERMISO PARA SUBIR ARCHIVOS
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.Default.AutoAwesome, contentDescription = null)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Cargar Rúbricas")
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Rol Alumno: Tienes permiso de consulta y visualización. Solo el personal Docente está facultado para subir o gestionar nuevas rúbricas.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
 
@@ -213,7 +246,10 @@ fun DocumentsScreen() {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Aún no hay documentos cargados.\nPresione 'Cargar Archivo' o 'Cargar Rúbricas' para comenzar.",
+                    text = if (esDocente)
+                        "Aún no hay documentos cargados.\nPresione 'Cargar Archivo' o 'Cargar Rúbricas' para comenzar."
+                    else
+                        "Aún no hay rúbricas publicadas por los docentes.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -257,7 +293,7 @@ fun DocumentsScreen() {
                                 )
                             }
 
-                            // 2. VER DOCUMENTO: Botón para abrir el visor nativo
+                            // 2. VER DOCUMENTO: Botón para abrir el visor nativo para Alumnos y Docentes
                             IconButton(onClick = {
                                 abrirDocumentoNativo(context, doc) {
                                     mostrarDialogoVisorNoEncontrado = true
@@ -270,13 +306,15 @@ fun DocumentsScreen() {
                                 )
                             }
 
-                            // 3. ELIMINAR DOCUMENTO: Botón para borrar de SQLite
-                            IconButton(onClick = { documentoAEliminar = doc }) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Eliminar",
-                                    tint = MaterialTheme.colorScheme.error
-                                )
+                            // 3. ELIMINAR DOCUMENTO: Solo permitido para Docentes / Admin
+                            if (esDocente) {
+                                IconButton(onClick = { documentoAEliminar = doc }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Eliminar",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
                             }
                         }
                     }
@@ -285,8 +323,8 @@ fun DocumentsScreen() {
         }
     }
 
-    // DIÁLOGO DE CONFIRMACIÓN PARA ELIMINAR DOCUMENTO
-    if (documentoAEliminar != null) {
+    // DIÁLOGO DE CONFIRMACIÓN PARA ELIMINAR DOCUMENTO (Solo Docentes)
+    if (documentoAEliminar != null && esDocente) {
         val doc = documentoAEliminar!!
         AlertDialog(
             onDismissRequest = { documentoAEliminar = null },
@@ -296,11 +334,9 @@ fun DocumentsScreen() {
                 Button(
                     onClick = {
                         scope.launch {
-                            // Borra el archivo físico del almacenamiento interno
                             val archivo = File(doc.rutaArchivo)
                             if (archivo.exists()) archivo.delete()
 
-                            // Borra el registro de SQLite
                             dao.eliminarPorId(doc.id)
                             mensajeAviso = "Documento '${doc.nombre}' eliminado correctamente."
                             documentoAEliminar = null

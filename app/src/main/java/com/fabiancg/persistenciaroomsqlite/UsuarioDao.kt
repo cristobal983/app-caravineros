@@ -36,4 +36,12 @@ interface UsuarioDao {
     // Contar usuarios registrados
     @Query("SELECT COUNT(*) FROM usuarios")
     suspend fun contarUsuarios(): Int
+
+    // Obtener todos los usuarios registrados en SQLite
+    @Query("SELECT * FROM usuarios ORDER BY id DESC")
+    fun obtenerTodosLosUsuarios(): Flow<List<Usuario>>
+
+    // Obtener usuarios filtrados por rol ("Docente" o "Alumno")
+    @Query("SELECT * FROM usuarios WHERE rol = :rol ORDER BY id DESC")
+    fun obtenerUsuariosPorRol(rol: String): Flow<List<Usuario>>
 }

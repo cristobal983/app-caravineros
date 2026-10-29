@@ -48,6 +48,7 @@ import com.fabiancg.persistenciaroomsqlite.R
 import com.fabiancg.persistenciaroomsqlite.SessionManager
 import com.fabiancg.persistenciaroomsqlite.Usuario
 import com.fabiancg.persistenciaroomsqlite.ui.navigation.NavigationItem
+import com.fabiancg.persistenciaroomsqlite.ui.screens.AdminScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.AuthScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.DocumentsScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.HomeScreen
@@ -181,6 +182,7 @@ fun MainScreen() {
                                     text = when (seccionActual) {
                                         NavigationItem.Home.route -> "Inicio - ESFOCAR"
                                         NavigationItem.Documents.route -> "Rúbricas y Documentos"
+                                        NavigationItem.Admin.route -> "Modo Administración"
                                         NavigationItem.Profile.route -> "Mi Perfil de Usuario"
                                         else -> "ESFOCAR App"
                                     },
@@ -242,7 +244,10 @@ fun MainScreen() {
                                     )
                                 }
                                 NavigationItem.Documents.route -> {
-                                    DocumentsScreen()
+                                    DocumentsScreen(usuarioActivo = usuarioActivo)
+                                }
+                                NavigationItem.Admin.route -> {
+                                    AdminScreen(usuarioActivo = usuarioActivo)
                                 }
                                 NavigationItem.Profile.route -> {
                                     ProfileScreen(
