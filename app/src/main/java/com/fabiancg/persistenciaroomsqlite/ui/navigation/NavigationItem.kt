@@ -30,10 +30,25 @@ sealed class NavigationItem(
     object Admin : NavigationItem("admin", "Modo Admin", Icons.Default.SupervisorAccount)
 
     companion object {
-        // Elementos de la barra inferior (NavigationBar)
-        val bottomBarItems = listOf(Home, Documents, Admin, Profile)
+        // Retorna los elementos del menú según el rol (Modo Admin solo visible para Docentes)
+        fun obtenerBottomBarItems(esDocente: Boolean): List<NavigationItem> {
+            return if (esDocente) {
+                listOf(Home, Documents, Admin, Profile)
+            } else {
+                listOf(Home, Documents, Profile)
+            }
+        }
 
-        // Elementos del menú lateral (Drawer)
-        val drawerItems = listOf(Home, Documents, Admin, Profile)
+        fun obtenerDrawerItems(esDocente: Boolean): List<NavigationItem> {
+            return if (esDocente) {
+                listOf(Home, Documents, Admin, Profile)
+            } else {
+                listOf(Home, Documents, Profile)
+            }
+        }
+
+        // Elementos predeterminados
+        val bottomBarItems = listOf(Home, Documents, Profile)
+        val drawerItems = listOf(Home, Documents, Profile)
     }
 }

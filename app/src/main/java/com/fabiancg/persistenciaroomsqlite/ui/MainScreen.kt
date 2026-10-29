@@ -69,8 +69,22 @@ fun MainScreen() {
     // Estado reactivo de usuario autenticado
     var usuarioActivo by remember { mutableStateOf<Usuario?>(SessionManager.obtenerUsuarioActivo(context)) }
 
+    // Determina si el usuario tiene rol de Docente / Admin
+    val esDocente = remember(usuarioActivo) {
+        usuarioActivo?.rol.equals("Docente", ignoreCase = true) || usuarioActivo?.rol.equals("Admin", ignoreCase = true)
+    }
+
+    // Listas dinámicas de navegación: MODO ADMIN SOLO SE MUESTRA A DOCENTES
+    val drawerItems = remember(esDocente) { NavigationItem.obtenerDrawerItems(esDocente) }
+    val bottomBarItems = remember(esDocente) { NavigationItem.obtenerBottomBarItems(esDocente) }
+
     // Ruta actual de navegación
     var seccionActual by rememberSaveable { mutableStateOf("home") }
+
+    // Seguridad: Si la cuenta es Alumno y estaba intentando acceder al Admin, redirige a Inicio
+    if (!esDocente && seccionActual == NavigationItem.Admin.route) {
+        seccionActual = NavigationItem.Home.route
+    }
 
     if (mostrarSplash) {
         // Pantalla de Carga Inicial con Escudo de ESFOCAR
@@ -128,8 +142,8 @@ fun MainScreen() {
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Opciones de navegación en el menú lateral
-                        NavigationItem.drawerItems.forEach { item ->
+                        // Opciones de navegación dinámicas (Modo Admin Oculto para Alumnos)
+                        drawerItems.forEach { item ->
                             val seleccionado = seccionActual == item.route
                             NavigationDrawerItem(
                                 icon = { Icon(item.icon, contentDescription = item.title) },
@@ -213,10 +227,10 @@ fun MainScreen() {
                             )
                         )
                     },
-                    // REQUERIMIENTO: BARRA DE NAVEGACIÓN INFERIOR
+                    // REQUERIMIENTO: BARRA DE NAVEGACIÓN INFERIOR DINÁMICA
                     bottomBar = {
                         NavigationBar {
-                            NavigationItem.bottomBarItems.forEach { item ->
+                            bottomBarItems.forEach { item ->
                                 val seleccionado = seccionActual == item.route
                                 NavigationBarItem(
                                     selected = seleccionado,
@@ -247,7 +261,15 @@ fun MainScreen() {
                                     DocumentsScreen(usuarioActivo = usuarioActivo)
                                 }
                                 NavigationItem.Admin.route -> {
-                                    AdminScreen(usuarioActivo = usuarioActivo)
+                                    if (esDocente) {
+                                        AdminScreen(usuarioActivo = usuarioActivo)
+                                    } else {
+                                        HomeScreen(
+                                            usuario = usuarioActivo,
+                                            onIrADocumentos = { seccionActual = NavigationItem.Documents.route },
+                                            onIrAPerfil = { seccionActual = NavigationItem.Profile.route }
+                                        )
+                                    }
                                 }
                                 NavigationItem.Profile.route -> {
                                     ProfileScreen(
