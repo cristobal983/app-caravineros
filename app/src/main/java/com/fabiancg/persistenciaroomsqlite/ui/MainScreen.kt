@@ -52,6 +52,7 @@ import com.fabiancg.persistenciaroomsqlite.ui.screens.AuthScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.DocumentsScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.HomeScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.ProfileScreen
+import com.fabiancg.persistenciaroomsqlite.ui.screens.SplashScreen
 import kotlinx.coroutines.launch
 
 
@@ -61,23 +62,34 @@ fun MainScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    // Control de la Pantalla de Carga Inicial (SplashScreen)
+    var mostrarSplash by rememberSaveable { mutableStateOf(true) }
+
     // Estado reactivo de usuario autenticado
     var usuarioActivo by remember { mutableStateOf<Usuario?>(SessionManager.obtenerUsuarioActivo(context)) }
 
     // Ruta actual de navegación
     var seccionActual by rememberSaveable { mutableStateOf("home") }
 
-    // Transición animada entre pantalla de Login/Registro y la App Autenticada
-    Crossfade(targetState = usuarioActivo != null, label = "AuthCrossfade") { estaLogueado ->
-        if (!estaLogueado) {
-            // VISTA 1 & 2: INICIAR SESIÓN Y REGISTRO DE USUARIOS
-            AuthScreen(
-                onLoginSuccess = { usuario ->
-                    usuarioActivo = usuario
-                    seccionActual = NavigationItem.Home.route
-                }
-            )
-        } else {
+    if (mostrarSplash) {
+        // Pantalla de Carga Inicial con Escudo de ESFOCAR
+        SplashScreen(
+            onSplashFinished = {
+                mostrarSplash = false
+            }
+        )
+    } else {
+        // Transición animada entre pantalla de Login/Registro y la App Autenticada
+        Crossfade(targetState = usuarioActivo != null, label = "AuthCrossfade") { estaLogueado ->
+            if (!estaLogueado) {
+                // VISTA 1 & 2: INICIAR SESIÓN Y REGISTRO DE USUARIOS
+                AuthScreen(
+                    onLoginSuccess = { usuario ->
+                        usuarioActivo = usuario
+                        seccionActual = NavigationItem.Home.route
+                    }
+                )
+            } else {
             val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
             // REQUERIMIENTO: MENÚ LATERAL (Navigation Drawer)
@@ -106,7 +118,7 @@ fun MainScreen() {
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Text(
-                                    text = "${usuarioActivo?.rol ?: "Alumno"} • ${usuarioActivo?.escalafon ?: "ESFOCAR"}",
+                                    text = usuarioActivo?.escalafon ?: "Aspirante a Carabinero",
                                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                                     style = MaterialTheme.typography.bodySmall
                                 )
@@ -250,4 +262,5 @@ fun MainScreen() {
             }
         }
     }
+}
 }
