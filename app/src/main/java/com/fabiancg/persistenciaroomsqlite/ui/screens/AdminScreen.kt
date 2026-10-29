@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
@@ -52,8 +53,9 @@ import com.fabiancg.persistenciaroomsqlite.Usuario
 /**
  * Pantalla de Panel de Administración (Modo Admin).
  * Requerimientos implementados:
- * 1. Registro completo de personas separadas por Docentes y Alumnos.
- * 2. Listado de registro de cada archivo subido por los docentes en SQLite.
+ * 1. Acceso exclusivo solo para Docentes (alumnos no tienen acceso ni les aparece la opción).
+ * 2. Registro y listado de personas separadas por pestañas independientes para Docentes y Alumnos.
+ * 3. Listado de registro de cada archivo subido con su fecha correspondiente y detalles.
  */
 @Composable
 fun AdminScreen(
@@ -71,8 +73,8 @@ fun AdminScreen(
     // 0 = Registro de Personas, 1 = Archivos Subidos
     var tabAdministracion by rememberSaveable { mutableIntStateOf(0) }
 
-    // Filtro para el registro de usuarios: "TODOS", "DOCENTE", "ALUMNO"
-    var filtroRol by rememberSaveable { mutableIntStateOf(0) } // 0: Todos, 1: Docentes, 2: Alumnos
+    // Sub-pestañas: 0 = Docentes, 1 = Alumnos, 2 = Todos
+    var subTabPersonas by rememberSaveable { mutableIntStateOf(0) }
 
     val docentes = remember(listaUsuarios) { listaUsuarios.filter { it.rol.equals("Docente", ignoreCase = true) } }
     val alumnos = remember(listaUsuarios) { listaUsuarios.filter { it.rol.equals("Alumno", ignoreCase = true) || !it.rol.equals("Docente", ignoreCase = true) } }
@@ -92,7 +94,7 @@ fun AdminScreen(
                 imageVector = Icons.Default.SupervisorAccount,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(36.dp)
             )
             Spacer(modifier = Modifier.width(10.dp))
             Column {
@@ -103,7 +105,7 @@ fun AdminScreen(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Control de Usuarios y Registro de Archivos en SQLite",
+                    text = "Panel exclusivo para Docentes • ESFOCAR",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -124,7 +126,7 @@ fun AdminScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Group, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Personas (${listaUsuarios.size})", fontWeight = FontWeight.Bold)
+                        Text("Personas Registradas (${listaUsuarios.size})", fontWeight = FontWeight.Bold)
                     }
                 }
             )
@@ -135,7 +137,7 @@ fun AdminScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.AutoMirrored.Filled.InsertDriveFile, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Archivos (${listaDocumentos.size})", fontWeight = FontWeight.Bold)
+                        Text("Archivos Subidos (${listaDocumentos.size})", fontWeight = FontWeight.Bold)
                     }
                 }
             )
@@ -145,7 +147,7 @@ fun AdminScreen(
 
         if (tabAdministracion == 0) {
             // ========================================================
-            // 1. REGISTRO DE PERSONAS SEPARADO POR DOCENTE Y ALUMNO
+            // 1. REGISTRO DE PERSONAS SEPARADO PARA DOCENTES Y ALUMNOS
             // ========================================================
 
             // Tarjetas de Métricas Rápidas
@@ -194,23 +196,47 @@ fun AdminScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Sub-Pestañas de Filtro: Todos / Docentes / Alumnos
+            // Sub-Pestañas para listar personas por separado: Docentes / Alumnos / Todos
             TabRow(
-                selectedTabIndex = filtroRol,
+                selectedTabIndex = subTabPersonas,
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
-                Tab(selected = filtroRol == 0, onClick = { filtroRol = 0 }, text = { Text("Todos (${listaUsuarios.size})") })
-                Tab(selected = filtroRol == 1, onClick = { filtroRol = 1 }, text = { Text("Docentes (${docentes.size})") })
-                Tab(selected = filtroRol == 2, onClick = { filtroRol = 2 }, text = { Text("Alumnos (${alumnos.size})") })
+                Tab(
+                    selected = subTabPersonas == 0,
+                    onClick = { subTabPersonas = 0 },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.SupervisorAccount, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Docentes (${docentes.size})", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                )
+                Tab(
+                    selected = subTabPersonas == 1,
+                    onClick = { subTabPersonas = 1 },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.School, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Alumnos (${alumnos.size})", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                )
+                Tab(
+                    selected = subTabPersonas == 2,
+                    onClick = { subTabPersonas = 2 },
+                    text = { Text("Todos (${listaUsuarios.size})") }
+                )
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            val usuariosAMostrar = when (filtroRol) {
-                1 -> docentes
-                2 -> alumnos
+            val usuariosAMostrar = when (subTabPersonas) {
+                0 -> docentes
+                1 -> alumnos
                 else -> listaUsuarios
             }
 
@@ -222,7 +248,11 @@ fun AdminScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No se encontraron personas en este registro.",
+                        text = when (subTabPersonas) {
+                            0 -> "No hay docentes registrados en la base de datos."
+                            1 -> "No hay alumnos registrados en la base de datos."
+                            else -> "No hay personas registradas."
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -240,16 +270,21 @@ fun AdminScreen(
 
         } else {
             // ========================================================
-            // 2. LISTADO DE REGISTRO DE ARCHIVOS SUBIDOS POR DOCENTES
+            // 2. LISTADO DE REGISTRO DE ARCHIVOS SUBIDOS CON SUS FECHAS
             // ========================================================
             Text(
-                text = "Historial y Registro de Archivos Cargados por Docentes",
+                text = "Historial y Registro de Archivos Subidos",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
+            Text(
+                text = "Registro en SQLite con fecha, tamaño y tipo de cada documento",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             if (listaDocumentos.isEmpty()) {
                 Box(
@@ -259,7 +294,7 @@ fun AdminScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Aún no hay archivos o rúbricas registradas en la base de datos SQLite.",
+                        text = "Aún no hay archivos registrados en la base de datos SQLite.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -302,7 +337,7 @@ private fun ItemUsuarioAdmin(usuario: Usuario) {
                 imageVector = if (esDocente) Icons.Default.SupervisorAccount else Icons.Default.School,
                 contentDescription = null,
                 tint = if (esDocente) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(38.dp)
             )
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -326,23 +361,42 @@ private fun ItemUsuarioAdmin(usuario: Usuario) {
                 Spacer(modifier = Modifier.height(2.dp))
 
                 Text(
-                    text = "RUT: ${usuario.rut} | Correo: ${usuario.email}",
+                    text = "Correo: ${usuario.email}",
                     style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Text(
-                    text = "Escalafón: ${usuario.escalafon}",
-                    style = MaterialTheme.typography.labelSmall,
+                    text = "RUT: ${usuario.rut} • Escalafón: ${usuario.escalafon}",
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline
                 )
+
+                if (usuario.fechaRegistro.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarToday,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Fecha de Registro: ${usuario.fechaRegistro}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 /**
- * Componente visual para cada archivo subido en la lista del registro de docentes.
+ * Componente visual para cada archivo subido con su fecha correspondiente.
  */
 @Composable
 private fun ItemArchivoAdmin(documento: DocumentoItem) {
@@ -363,7 +417,7 @@ private fun ItemArchivoAdmin(documento: DocumentoItem) {
                 imageVector = if (esPdf) Icons.Default.PictureAsPdf else Icons.Default.Description,
                 contentDescription = null,
                 tint = if (esPdf) Color(0xFFD32F2F) else Color(0xFF1976D2),
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(38.dp)
             )
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -378,16 +432,28 @@ private fun ItemArchivoAdmin(documento: DocumentoItem) {
                 Spacer(modifier = Modifier.height(2.dp))
 
                 Text(
-                    text = "Tipo: ${documento.tipo} | Tamaño: ${tamanoKb} KB",
+                    text = "Tipo: ${documento.tipo} • Tamaño: ${tamanoKb} KB • Categoría: ${documento.categoria}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Text(
-                    text = "Fecha Carga: ${documento.fechaCarga} | Categoría: ${documento.categoria}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarToday,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Fecha de subida: ${documento.fechaCarga}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }

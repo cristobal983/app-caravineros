@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.SupervisorAccount
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -62,15 +65,42 @@ import com.fabiancg.persistenciaroomsqlite.R
 import com.fabiancg.persistenciaroomsqlite.SessionManager
 import com.fabiancg.persistenciaroomsqlite.Usuario
 import kotlinx.coroutines.launch
+import java.text.Normalizer
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /**
+ * Función auxiliar para generar automáticamente el correo institucional
+ * según el nombre y el rol seleccionado.
+ * Ejemplo: Cristóbal Flores (Alumno) -> cflores@esfocar.cl o alumno@esfocar.cl
+ */
+private fun generarCorreoInstitucional(nombre: String, rol: String): String {
+    val dominio = "esfocar.cl"
+    val sufijoRol = if (rol.equals("Docente", ignoreCase = true)) "docente" else "alumno"
+
+    val nombreLimpio = Normalizer.normalize(nombre.trim().lowercase(Locale.getDefault()), Normalizer.Form.NFD)
+        .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+        .replace("[^a-z0-9 ]".toRegex(), "")
+        .trim()
+
+    val partes = nombreLimpio.split("\\s+".toRegex()).filter { it.isNotBlank() }
+    return if (partes.size >= 2) {
+        val inicial = partes[0].take(1)
+        val apellido = partes[1]
+        "$inicial$apellido@$dominio"
+    } else if (partes.size == 1 && partes[0].length >= 3) {
+        "${partes[0]}@$dominio"
+    } else {
+        "$sufijoRol@$dominio"
+    }
+}
+
+/**
  * Pantalla de Autenticación (Login y Registro).
  * Diseñada de forma didáctica para nivel principiante:
- * - Estados simples con rememberSaveable.
- * - Validaciones directas con if/else fáciles de explicar al profesor.
+ * - Generación automática de correo institucional (@esfocar.cl) según nombre y rol.
+ * - Mensaje y Diálogo emergente con Logo y Agradecimiento tras registrarse.
  * - Guardado en SQLite usando Room.
  */
 @Composable
@@ -94,13 +124,91 @@ fun AuthScreen(
     var regRol by rememberSaveable { mutableStateOf("Alumno") } // "Alumno" o "Docente"
     var regNombre by rememberSaveable { mutableStateOf("") }
     var regRut by rememberSaveable { mutableStateOf("") }
-    var regEmail by rememberSaveable { mutableStateOf("") }
+    var regEmail by rememberSaveable { mutableStateOf("alumno@esfocar.cl") }
     var regClave by rememberSaveable { mutableStateOf("") }
     var regConfirmarClave by rememberSaveable { mutableStateOf("") }
     var regError by rememberSaveable { mutableStateOf<String?>(null) }
     var regExito by rememberSaveable { mutableStateOf<String?>(null) }
 
+    // Diálogo emergente de agradecimiento post-registro
+    var mostrarAgradecimiento by rememberSaveable { mutableStateOf(false) }
+    var nombreRecienRegistrado by rememberSaveable { mutableStateOf("") }
+    var correoRecienRegistrado by rememberSaveable { mutableStateOf("") }
+    var rolRecienRegistrado by rememberSaveable { mutableStateOf("") }
+
     val scrollState = rememberScrollState()
+
+    // ========================================================
+    // DIÁLOGO DE AGRADECIMIENTO CON LOGO Y NOMBRE DE LA APP
+    // ========================================================
+    if (mostrarAgradecimiento) {
+        AlertDialog(
+            onDismissRequest = { mostrarAgradecimiento = false },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        mostrarAgradecimiento = false
+                        tabSeleccionada = 0 // Redirigir a iniciar sesión
+                        loginEmail = correoRecienRegistrado
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Iniciar Sesión Ahora")
+                }
+            },
+            title = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.escudo_esfocar),
+                        contentDescription = "Logo ESFOCAR",
+                        modifier = Modifier.size(80.dp)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "ESFOCAR - App de Estudio",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF2E7D32),
+                        modifier = Modifier.size(44.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "¡Muchas gracias por registrarte!",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2E7D32),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Bienvenido(a) a la Escuela de Formación de Carabineros.\n\n" +
+                                "• Usuario: $nombreRecienRegistrado\n" +
+                                "• Rol: $rolRecienRegistrado\n" +
+                                "• Correo asignado: $correoRecienRegistrado\n\n" +
+                                "Tu cuenta fue guardada con éxito en la base de datos local SQLite.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -174,7 +282,7 @@ fun AuthScreen(
                     // 1. VISTA DE INICIO DE SESIÓN
                     // ==========================================
                     Text(
-                        text = "Acceso para Alumnos",
+                        text = "Acceso Institucional",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -286,7 +394,7 @@ fun AuthScreen(
                                         id = 999,
                                         rut = "12345678-9",
                                         nombre = "Aspirante Cristóbal Flores",
-                                        email = "aspirante@esfocar.cl",
+                                        email = "alumno@esfocar.cl",
                                         contrasena = "123456",
                                         rol = "Alumno",
                                         escalafon = "Aspirante a Carabinero",
@@ -313,7 +421,7 @@ fun AuthScreen(
                     )
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // REQUERIMIENTO: SELECCIÓN DE ROL (DOCENTE O ALUMNO)
+                    // SELECCIÓN DE ROL (DOCENTE O ALUMNO)
                     Text(
                         text = "¿Eres Docente o Alumno?",
                         style = MaterialTheme.typography.bodyMedium,
@@ -328,7 +436,10 @@ fun AuthScreen(
                     ) {
                         // Tarjeta Rol Alumno
                         OutlinedCard(
-                            onClick = { regRol = "Alumno" },
+                            onClick = {
+                                regRol = "Alumno"
+                                regEmail = generarCorreoInstitucional(regNombre, "Alumno")
+                            },
                             modifier = Modifier.weight(1f),
                             border = BorderStroke(
                                 width = if (regRol == "Alumno") 2.dp else 1.dp,
@@ -366,7 +477,10 @@ fun AuthScreen(
 
                         // Tarjeta Rol Docente
                         OutlinedCard(
-                            onClick = { regRol = "Docente" },
+                            onClick = {
+                                regRol = "Docente"
+                                regEmail = generarCorreoInstitucional(regNombre, "Docente")
+                            },
                             modifier = Modifier.weight(1f),
                             border = BorderStroke(
                                 width = if (regRol == "Docente") 2.dp else 1.dp,
@@ -405,11 +519,15 @@ fun AuthScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Nombre Completo
+                    // Nombre Completo (Genera el correo automáticamente)
                     OutlinedTextField(
                         value = regNombre,
-                        onValueChange = { regNombre = it },
+                        onValueChange = { nuevoNombre ->
+                            regNombre = nuevoNombre
+                            regEmail = generarCorreoInstitucional(nuevoNombre, regRol)
+                        },
                         label = { Text("Nombre Completo") },
+                        placeholder = { Text("Ej: Cristóbal Flores") },
                         leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
@@ -428,11 +546,18 @@ fun AuthScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Correo Institucional
+                    // Correo Institucional generado automáticamente
                     OutlinedTextField(
                         value = regEmail,
                         onValueChange = { regEmail = it },
-                        label = { Text("Correo Institucional") },
+                        label = { Text("Correo Institucional (Generado automáticamente)") },
+                        supportingText = {
+                            Text(
+                                text = "Generado según tu nombre y rol (@esfocar.cl)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        },
                         leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         modifier = Modifier.fillMaxWidth(),
@@ -526,22 +651,33 @@ fun AuthScreen(
                                     "Aspirante a Carabinero"
                                 }
 
+                                val emailFinal = regEmail.trim()
+                                val nombreFinal = regNombre.trim()
+                                val rolFinal = regRol
+
                                 val nuevoUsuario = Usuario(
                                     rut = regRut.trim(),
-                                    nombre = regNombre.trim(),
-                                    email = regEmail.trim(),
+                                    nombre = nombreFinal,
+                                    email = emailFinal,
                                     contrasena = regClave.trim(),
-                                    rol = regRol,
+                                    rol = rolFinal,
                                     escalafon = escalafonSegunRol,
                                     fechaRegistro = fechaHoy
                                 )
                                 usuarioDao.insertar(nuevoUsuario)
-                                regExito = "¡Usuario ($regRol) registrado con éxito en SQLite! Ahora puede iniciar sesión."
+
+                                // Activamos el mensaje y diálogo emergente de agradecimiento con el logo
+                                nombreRecienRegistrado = nombreFinal
+                                correoRecienRegistrado = emailFinal
+                                rolRecienRegistrado = rolFinal
+                                mostrarAgradecimiento = true
+
+                                regExito = "¡Usuario ($rolFinal) registrado con éxito en SQLite!"
 
                                 // Limpiamos los campos
                                 regNombre = ""
                                 regRut = ""
-                                regEmail = ""
+                                regEmail = "alumno@esfocar.cl"
                                 regClave = ""
                                 regConfirmarClave = ""
                                 regRol = "Alumno"
