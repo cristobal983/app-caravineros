@@ -1,5 +1,6 @@
 package com.fabiancg.persistenciaroomsqlite.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,24 +21,32 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.SupervisorAccount
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -49,6 +58,11 @@ import androidx.compose.ui.unit.dp
 import com.fabiancg.persistenciaroomsqlite.AppDatabase
 import com.fabiancg.persistenciaroomsqlite.DocumentoItem
 import com.fabiancg.persistenciaroomsqlite.Usuario
+import com.fabiancg.persistenciaroomsqlite.ui.components.FotoPerfilAvatar
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Pantalla de Panel de Administración (Modo Admin).
@@ -56,6 +70,8 @@ import com.fabiancg.persistenciaroomsqlite.Usuario
  * 1. Acceso exclusivo solo para Docentes (alumnos no tienen acceso ni les aparece la opción).
  * 2. Registro y listado de personas separadas por pestañas independientes para Docentes y Alumnos.
  * 3. Listado de registro de cada archivo subido con su fecha correspondiente y detalles.
+ * 4. Eliminación de personas registradas de la base de datos Room SQLite con diálogo de confirmación.
+ * 5. Eliminación de archivos subidos (físico y de SQLite) con diálogo de confirmación.
  */
 @Composable
 fun AdminScreen(
@@ -65,6 +81,7 @@ fun AdminScreen(
     val db = remember { AppDatabase.getDatabase(context) }
     val usuarioDao = remember { db.usuarioDao() }
     val documentoDao = remember { db.documentoDao() }
+    val scope = rememberCoroutineScope()
 
     // Listas reactivas desde SQLite Room
     val listaUsuarios by usuarioDao.obtenerTodosLosUsuarios().collectAsState(initial = emptyList())
@@ -76,8 +93,103 @@ fun AdminScreen(
     // Sub-pestañas: 0 = Docentes, 1 = Alumnos, 2 = Todos
     var subTabPersonas by rememberSaveable { mutableIntStateOf(0) }
 
+    // Estados para confirmación de eliminación
+    var usuarioAEliminar by remember { mutableStateOf<Usuario?>(null) }
+    var archivoAEliminar by remember { mutableStateOf<DocumentoItem?>(null) }
+    var mensajeAviso by remember { mutableStateOf<String?>(null) }
+
     val docentes = remember(listaUsuarios) { listaUsuarios.filter { it.rol.equals("Docente", ignoreCase = true) } }
     val alumnos = remember(listaUsuarios) { listaUsuarios.filter { it.rol.equals("Alumno", ignoreCase = true) || !it.rol.equals("Docente", ignoreCase = true) } }
+
+    // ========================================================
+    // DIÁLOGO PARA ELIMINAR PERSONA REGISTRADA
+    // ========================================================
+    if (usuarioAEliminar != null) {
+        val u = usuarioAEliminar!!
+        AlertDialog(
+            onDismissRequest = { usuarioAEliminar = null },
+            title = {
+                Text(
+                    text = "Eliminar Persona Registrada",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
+            },
+            text = {
+                Text(
+                    text = "¿Está seguro de que desea eliminar a '${u.nombre}' (${u.rol}) de la base de datos?\n\nEsta acción no se puede deshacer."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            usuarioDao.eliminarPorId(u.id)
+                            mensajeAviso = "Usuario '${u.nombre}' eliminado de SQLite."
+                            usuarioAEliminar = null
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { usuarioAEliminar = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    // ========================================================
+    // DIÁLOGO PARA ELIMINAR ARCHIVO REGISTRADO
+    // ========================================================
+    if (archivoAEliminar != null) {
+        val doc = archivoAEliminar!!
+        AlertDialog(
+            onDismissRequest = { archivoAEliminar = null },
+            title = {
+                Text(
+                    text = "Eliminar Archivo",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
+            },
+            text = {
+                Text(
+                    text = "¿Está seguro de eliminar el archivo '${doc.nombre}' del almacenamiento y de la base de datos SQLite?"
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                try {
+                                    val f = File(doc.rutaArchivo)
+                                    if (f.exists()) f.delete()
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+                            documentoDao.eliminarPorId(doc.id)
+                            mensajeAviso = "Archivo '${doc.nombre}' eliminado correctamente."
+                            archivoAEliminar = null
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Eliminar Archivo")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { archivoAEliminar = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -105,14 +217,39 @@ fun AdminScreen(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Panel exclusivo para Docentes • ESFOCAR",
+                    text = "Gestión exclusiva de Usuarios y Archivos en SQLite",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        // Mensaje de notificación temporal
+        AnimatedVisibility(visible = mensajeAviso != null, enter = fadeIn(), exit = fadeOut()) {
+            mensajeAviso?.let { texto ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = texto, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                        TextButton(onClick = { mensajeAviso = null }) {
+                            Text("OK")
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         // SECTOR DE PESTAÑAS PRINCIPALES DEL MODO ADMIN
         TabRow(
@@ -126,7 +263,7 @@ fun AdminScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Group, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Personas Registradas (${listaUsuarios.size})", fontWeight = FontWeight.Bold)
+                        Text("Personas (${listaUsuarios.size})", fontWeight = FontWeight.Bold)
                     }
                 }
             )
@@ -137,7 +274,7 @@ fun AdminScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.AutoMirrored.Filled.InsertDriveFile, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Archivos Subidos (${listaDocumentos.size})", fontWeight = FontWeight.Bold)
+                        Text("Archivos (${listaDocumentos.size})", fontWeight = FontWeight.Bold)
                     }
                 }
             )
@@ -263,7 +400,17 @@ fun AdminScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(usuariosAMostrar, key = { it.id }) { u ->
-                        ItemUsuarioAdmin(usuario = u)
+                        ItemUsuarioAdmin(
+                            usuario = u,
+                            esUsuarioSesionActual = usuarioActivo?.id == u.id,
+                            onEliminar = {
+                                if (usuarioActivo?.id == u.id) {
+                                    Toast.makeText(context, "No puedes eliminar tu propia cuenta en sesión activa.", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    usuarioAEliminar = u
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -279,7 +426,7 @@ fun AdminScreen(
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "Registro en SQLite con fecha, tamaño y tipo de cada documento",
+                text = "Registro en SQLite con fecha, tamaño, tipo y opción para eliminar",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -305,7 +452,10 @@ fun AdminScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(listaDocumentos, key = { it.id }) { doc ->
-                        ItemArchivoAdmin(documento = doc)
+                        ItemArchivoAdmin(
+                            documento = doc,
+                            onEliminar = { archivoAEliminar = doc }
+                        )
                     }
                 }
             }
@@ -314,10 +464,15 @@ fun AdminScreen(
 }
 
 /**
- * Componente visual para cada usuario en la lista de administración.
+ * Componente visual para cada usuario en la lista de administración,
+ * con visualización de su foto de perfil y botón para eliminar.
  */
 @Composable
-private fun ItemUsuarioAdmin(usuario: Usuario) {
+private fun ItemUsuarioAdmin(
+    usuario: Usuario,
+    esUsuarioSesionActual: Boolean,
+    onEliminar: () -> Unit
+) {
     val esDocente = usuario.rol.equals("Docente", ignoreCase = true)
 
     Card(
@@ -333,11 +488,10 @@ private fun ItemUsuarioAdmin(usuario: Usuario) {
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = if (esDocente) Icons.Default.SupervisorAccount else Icons.Default.School,
-                contentDescription = null,
-                tint = if (esDocente) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(38.dp)
+            // Foto de perfil o avatar según su foto registrada
+            FotoPerfilAvatar(
+                rutaFoto = usuario.fotoPerfil,
+                size = 46.dp
             )
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -368,7 +522,7 @@ private fun ItemUsuarioAdmin(usuario: Usuario) {
                 )
 
                 Text(
-                    text = "RUT: ${usuario.rut} • Escalafón: ${usuario.escalafon}",
+                    text = "RUT: ${usuario.rut} • ${usuario.escalafon}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline
                 )
@@ -384,22 +538,37 @@ private fun ItemUsuarioAdmin(usuario: Usuario) {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Fecha de Registro: ${usuario.fechaRegistro}",
+                            text = "Registro: ${usuario.fechaRegistro}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
             }
+
+            // BOTÓN DE ELIMINAR PERSONA REGISTRADA
+            IconButton(
+                onClick = onEliminar
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Eliminar Usuario",
+                    tint = if (esUsuarioSesionActual) MaterialTheme.colorScheme.outlineVariant else MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }
 
 /**
- * Componente visual para cada archivo subido con su fecha correspondiente.
+ * Componente visual para cada archivo subido con su fecha correspondiente
+ * y botón para eliminarlo de SQLite y del almacenamiento.
  */
 @Composable
-private fun ItemArchivoAdmin(documento: DocumentoItem) {
+private fun ItemArchivoAdmin(
+    documento: DocumentoItem,
+    onEliminar: () -> Unit
+) {
     val esPdf = documento.tipo.equals("PDF", ignoreCase = true)
     val tamanoKb = documento.tamanoBytes / 1024
 
@@ -454,6 +623,15 @@ private fun ItemArchivoAdmin(documento: DocumentoItem) {
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
+            }
+
+            // BOTÓN DE ELIMINAR ARCHIVO
+            IconButton(onClick = onEliminar) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Eliminar Archivo",
+                    tint = MaterialTheme.colorScheme.error
+                )
             }
         }
     }

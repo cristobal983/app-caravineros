@@ -66,12 +66,19 @@ fun HomeScreen(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Escudo Oficial ESFOCAR y Bienvenida
-        Image(
-            painter = painterResource(id = R.drawable.escudo_esfocar),
-            contentDescription = "Escudo Oficial ESFOCAR",
-            modifier = Modifier.size(80.dp)
-        )
+        // Foto de Perfil o Escudo Oficial ESFOCAR
+        if (!usuario?.fotoPerfil.isNullOrBlank()) {
+            com.fabiancg.persistenciaroomsqlite.ui.components.FotoPerfilAvatar(
+                rutaFoto = usuario.fotoPerfil,
+                size = 84.dp
+            )
+        } else {
+            Image(
+                painter = painterResource(id = R.drawable.escudo_esfocar),
+                contentDescription = "Escudo Oficial ESFOCAR",
+                modifier = Modifier.size(80.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 

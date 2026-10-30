@@ -1,5 +1,8 @@
 package com.fabiancg.persistenciaroomsqlite.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -15,10 +18,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
@@ -64,6 +69,9 @@ import com.fabiancg.persistenciaroomsqlite.AppDatabase
 import com.fabiancg.persistenciaroomsqlite.R
 import com.fabiancg.persistenciaroomsqlite.SessionManager
 import com.fabiancg.persistenciaroomsqlite.Usuario
+import com.fabiancg.persistenciaroomsqlite.ui.components.FotoPerfilAvatar
+import com.fabiancg.persistenciaroomsqlite.ui.components.formatearRutAutomatico
+import com.fabiancg.persistenciaroomsqlite.ui.components.guardarFotoEnAlmacenamiento
 import kotlinx.coroutines.launch
 import java.text.Normalizer
 import java.text.SimpleDateFormat
@@ -99,6 +107,8 @@ private fun generarCorreoInstitucional(nombre: String, rol: String): String {
 /**
  * Pantalla de Autenticación (Login y Registro).
  * Diseñada de forma didáctica para nivel principiante:
+ * - Selección opcional de Foto de Perfil.
+ * - Formateo automático del guion en el RUT chileno.
  * - Generación automática de correo institucional (@esfocar.cl) según nombre y rol.
  * - Mensaje y Diálogo emergente con Logo y Agradecimiento tras registrarse.
  * - Guardado en SQLite usando Room.
@@ -127,6 +137,7 @@ fun AuthScreen(
     var regEmail by rememberSaveable { mutableStateOf("alumno@esfocar.cl") }
     var regClave by rememberSaveable { mutableStateOf("") }
     var regConfirmarClave by rememberSaveable { mutableStateOf("") }
+    var regFotoRuta by rememberSaveable { mutableStateOf<String?>(null) }
     var regError by rememberSaveable { mutableStateOf<String?>(null) }
     var regExito by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -135,6 +146,21 @@ fun AuthScreen(
     var nombreRecienRegistrado by rememberSaveable { mutableStateOf("") }
     var correoRecienRegistrado by rememberSaveable { mutableStateOf("") }
     var rolRecienRegistrado by rememberSaveable { mutableStateOf("") }
+    var fotoRecienRegistrada by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Selector de imagen de la galería para foto de perfil
+    val selectorFotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                val rutaGuardada = guardarFotoEnAlmacenamiento(context, uri)
+                if (rutaGuardada != null) {
+                    regFotoRuta = rutaGuardada
+                }
+            }
+        }
+    }
 
     val scrollState = rememberScrollState()
 
@@ -164,9 +190,9 @@ fun AuthScreen(
                     Image(
                         painter = painterResource(id = R.drawable.escudo_esfocar),
                         contentDescription = "Logo ESFOCAR",
-                        modifier = Modifier.size(80.dp)
+                        modifier = Modifier.size(76.dp)
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "ESFOCAR - App de Estudio",
                         style = MaterialTheme.typography.titleMedium,
@@ -181,13 +207,19 @@ fun AuthScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = Color(0xFF2E7D32),
-                        modifier = Modifier.size(44.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    if (fotoRecienRegistrada != null) {
+                        FotoPerfilAvatar(rutaFoto = fotoRecienRegistrada, size = 64.dp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF2E7D32),
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
                     Text(
                         text = "¡Muchas gracias por registrarte!",
                         style = MaterialTheme.typography.titleMedium,
@@ -288,7 +320,7 @@ fun AuthScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Campo de Correo
+                    // Campo de Correo o RUT
                     OutlinedTextField(
                         value = loginEmail,
                         onValueChange = { loginEmail = it },
@@ -421,6 +453,31 @@ fun AuthScreen(
                     )
                     Spacer(modifier = Modifier.height(10.dp))
 
+                    // SELECTOR DE FOTO DE PERFIL
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        FotoPerfilAvatar(rutaFoto = regFotoRuta, size = 80.dp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedButton(
+                            onClick = { selectorFotoLauncher.launch("image/*") }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AddPhotoAlternate,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (regFotoRuta != null) "Cambiar Foto de Perfil" else "Agregar Foto de Perfil",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     // SELECCIÓN DE ROL (DOCENTE O ALUMNO)
                     Text(
                         text = "¿Eres Docente o Alumno?",
@@ -519,14 +576,14 @@ fun AuthScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Nombre Completo (Genera el correo automáticamente)
+                    // Nombre (Genera el correo automáticamente)
                     OutlinedTextField(
                         value = regNombre,
                         onValueChange = { nuevoNombre ->
                             regNombre = nuevoNombre
                             regEmail = generarCorreoInstitucional(nuevoNombre, regRol)
                         },
-                        label = { Text("Nombre Completo") },
+                        label = { Text("Nombre") },
                         placeholder = { Text("Ej: Cristóbal Flores") },
                         leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth(),
@@ -535,11 +592,17 @@ fun AuthScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // RUT
+                    // RUT con Guion Automático
                     OutlinedTextField(
                         value = regRut,
-                        onValueChange = { regRut = it },
-                        label = { Text("RUT (ej: 12345678-9)") },
+                        onValueChange = { entrada ->
+                            regRut = formatearRutAutomatico(entrada)
+                        },
+                        label = { Text("RUT (guion automático)") },
+                        placeholder = { Text("Ej: 12345678-9") },
+                        supportingText = {
+                            Text("El guion se inserta automáticamente al escribir", style = MaterialTheme.typography.labelSmall)
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -626,7 +689,7 @@ fun AuthScreen(
                                 return@Button
                             }
                             if (!regRut.contains("-") || regRut.trim().length < 8) {
-                                regError = "Ingrese un RUT válido con guion (ej: 12345678-9)."
+                                regError = "Ingrese un RUT válido (ej: 12345678-9)."
                                 return@Button
                             }
                             if (!regEmail.contains("@") || !regEmail.contains(".")) {
@@ -654,6 +717,7 @@ fun AuthScreen(
                                 val emailFinal = regEmail.trim()
                                 val nombreFinal = regNombre.trim()
                                 val rolFinal = regRol
+                                val fotoFinal = regFotoRuta
 
                                 val nuevoUsuario = Usuario(
                                     rut = regRut.trim(),
@@ -662,7 +726,8 @@ fun AuthScreen(
                                     contrasena = regClave.trim(),
                                     rol = rolFinal,
                                     escalafon = escalafonSegunRol,
-                                    fechaRegistro = fechaHoy
+                                    fechaRegistro = fechaHoy,
+                                    fotoPerfil = fotoFinal
                                 )
                                 usuarioDao.insertar(nuevoUsuario)
 
@@ -670,6 +735,7 @@ fun AuthScreen(
                                 nombreRecienRegistrado = nombreFinal
                                 correoRecienRegistrado = emailFinal
                                 rolRecienRegistrado = rolFinal
+                                fotoRecienRegistrada = fotoFinal
                                 mostrarAgradecimiento = true
 
                                 regExito = "¡Usuario ($rolFinal) registrado con éxito en SQLite!"
@@ -681,6 +747,7 @@ fun AuthScreen(
                                 regClave = ""
                                 regConfirmarClave = ""
                                 regRol = "Alumno"
+                                regFotoRuta = null
                             }
                         },
                         modifier = Modifier.fillMaxWidth()

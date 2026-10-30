@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
  * 1. Registrar usuarios (Insert)
  * 2. Iniciar sesión (Select con email/RUT y contraseña)
  * 3. Editar datos de usuario (Update)
+ * 4. Eliminar usuarios (Delete) en Modo Admin
  */
 @Dao
 interface UsuarioDao {
@@ -32,6 +33,10 @@ interface UsuarioDao {
     // Buscar por ID
     @Query("SELECT * FROM usuarios WHERE id = :id LIMIT 1")
     suspend fun obtenerPorId(id: Int): Usuario?
+
+    // Eliminar usuario por ID (exclusivo para Modo Admin)
+    @Query("DELETE FROM usuarios WHERE id = :id")
+    suspend fun eliminarPorId(id: Int): Int
 
     // Contar usuarios registrados
     @Query("SELECT COUNT(*) FROM usuarios")

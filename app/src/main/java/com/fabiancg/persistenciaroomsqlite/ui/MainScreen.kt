@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AccountCircle
@@ -120,11 +122,22 @@ fun MainScreen() {
                                 .padding(24.dp)
                         ) {
                             Column {
-                                Image(
-                                    painter = painterResource(id = R.drawable.escudo_esfocar),
-                                    contentDescription = "Escudo Oficial ESFOCAR",
-                                    modifier = Modifier.height(52.dp)
-                                )
+                                androidx.compose.foundation.layout.Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (!usuarioActivo?.fotoPerfil.isNullOrBlank()) {
+                                        com.fabiancg.persistenciaroomsqlite.ui.components.FotoPerfilAvatar(
+                                            rutaFoto = usuarioActivo?.fotoPerfil,
+                                            size = 48.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                    }
+                                    Image(
+                                        painter = painterResource(id = R.drawable.escudo_esfocar),
+                                        contentDescription = "Escudo Oficial ESFOCAR",
+                                        modifier = Modifier.height(48.dp)
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = usuarioActivo?.nombre ?: "Usuario ESFOCAR",

@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 
 /**
  * Entidad Room que representa la tabla "usuarios" en SQLite.
- * Modela a los alumnos / aspirantes de la Escuela de Formación de Carabineros (ESFOCAR).
+ * Modela a los alumnos / aspirantes y docentes de la Escuela de Formación de Carabineros (ESFOCAR).
  * Permite el registro e inicio de sesión local (Offline-first).
  */
 @Entity(
@@ -26,5 +26,6 @@ data class Usuario(
     val contrasena: String,
     val rol: String = "Alumno", // "Docente" o "Alumno"
     val escalafon: String = "Aspirante a Carabinero",
-    val fechaRegistro: String
+    val fechaRegistro: String,
+    val fotoPerfil: String? = null // Ruta absoluta del archivo local de la foto de perfil
 )

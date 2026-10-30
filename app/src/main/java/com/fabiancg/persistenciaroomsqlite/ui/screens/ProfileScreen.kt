@@ -1,5 +1,8 @@
 package com.fabiancg.persistenciaroomsqlite.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -14,10 +17,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
@@ -43,7 +47,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -52,13 +55,15 @@ import androidx.compose.ui.unit.dp
 import com.fabiancg.persistenciaroomsqlite.AppDatabase
 import com.fabiancg.persistenciaroomsqlite.SessionManager
 import com.fabiancg.persistenciaroomsqlite.Usuario
+import com.fabiancg.persistenciaroomsqlite.ui.components.FotoPerfilAvatar
+import com.fabiancg.persistenciaroomsqlite.ui.components.guardarFotoEnAlmacenamiento
 import kotlinx.coroutines.launch
 
 /**
  * Pantalla de Perfil de Usuario.
  * Cumple con dos requerimientos clave de la pauta:
- * 1. Editar datos de usuario (nombre, correo, contraseña) y guardarlos en SQLite.
- * 2. Cerrar sesión con diálogo de confirmación.
+ * 1. Editar datos de usuario (nombre, correo, contraseña, foto de perfil) y guardarlos en SQLite.
+ * 2. Cerrar sesión de manera adecuada y segura.
  */
 @Composable
 fun ProfileScreen(
@@ -75,10 +80,24 @@ fun ProfileScreen(
     var nombreEditado by remember { mutableStateOf(usuario?.nombre ?: "") }
     var emailEditado by remember { mutableStateOf(usuario?.email ?: "") }
     var claveEditada by remember { mutableStateOf(usuario?.contrasena ?: "") }
+    var fotoEditada by remember { mutableStateOf(usuario?.fotoPerfil) }
 
     var mensajeError by remember { mutableStateOf<String?>(null) }
     var mensajeExito by remember { mutableStateOf<String?>(null) }
     var mostrarDialogoLogout by remember { mutableStateOf(false) }
+
+    val selectorFotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                val rutaGuardada = guardarFotoEnAlmacenamiento(context, uri)
+                if (rutaGuardada != null) {
+                    fotoEditada = rutaGuardada
+                }
+            }
+        }
+    }
 
     val scrollState = rememberScrollState()
 
@@ -92,20 +111,19 @@ fun ProfileScreen(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Avatar del Aspirante
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp)
-            )
+        // Avatar / Foto de Perfil del Usuario
+        FotoPerfilAvatar(
+            rutaFoto = if (modoEdicion) fotoEditada else usuario?.fotoPerfil,
+            size = 88.dp
+        )
+
+        if (modoEdicion) {
+            Spacer(modifier = Modifier.height(6.dp))
+            OutlinedButton(onClick = { selectorFotoLauncher.launch("image/*") }) {
+                Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Cambiar Foto", style = MaterialTheme.typography.labelSmall)
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -148,6 +166,12 @@ fun ProfileScreen(
                             modoEdicion = !modoEdicion
                             mensajeError = null
                             mensajeExito = null
+                            if (!modoEdicion) {
+                                nombreEditado = usuario?.nombre ?: ""
+                                emailEditado = usuario?.email ?: ""
+                                claveEditada = usuario?.contrasena ?: ""
+                                fotoEditada = usuario?.fotoPerfil
+                            }
                         }
                     ) {
                         Icon(
@@ -172,11 +196,11 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(6.dp))
                     Text("Base de datos: Room SQLite (Offline)", style = MaterialTheme.typography.bodyMedium)
                 } else {
-                    // MODO EDICIÓN DE DATOS (REQUERIMIENTO: EDITAR DATOS DE USUARIO)
+                    // MODO EDICIÓN DE DATOS
                     OutlinedTextField(
                         value = nombreEditado,
                         onValueChange = { nombreEditado = it },
-                        label = { Text("Nombre Completo") },
+                        label = { Text("Nombre") },
                         leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
@@ -252,7 +276,8 @@ fun ProfileScreen(
                                     val usuarioActualizado = usuario.copy(
                                         nombre = nombreEditado.trim(),
                                         email = emailEditado.trim(),
-                                        contrasena = claveEditada.trim()
+                                        contrasena = claveEditada.trim(),
+                                        fotoPerfil = fotoEditada
                                     )
                                     usuarioDao.actualizar(usuarioActualizado)
                                     SessionManager.guardarSesion(context, usuarioActualizado)
@@ -272,9 +297,9 @@ fun ProfileScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        // BOTÓN CERRAR SESIÓN
+        // BOTÓN PARA CERRAR SESIÓN (REQUERIMIENTO: CERRAR SESIÓN ADECUADAMENTE)
         Button(
             onClick = { mostrarDialogoLogout = true },
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
@@ -282,31 +307,38 @@ fun ProfileScreen(
         ) {
             Text("Cerrar Sesión")
         }
+    }
 
-        // DIÁLOGO DE CONFIRMACIÓN DE CIERRE DE SESIÓN
-        if (mostrarDialogoLogout) {
-            AlertDialog(
-                onDismissRequest = { mostrarDialogoLogout = false },
-                title = { Text("Confirmar Cierre de Sesión") },
-                text = { Text("¿Desea cerrar la sesión actual? Sus datos y documentos seguirán guardados en SQLite.") },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            mostrarDialogoLogout = false
-                            SessionManager.cerrarSesion(context)
-                            onCerrarSesion()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("Sí, Salir")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { mostrarDialogoLogout = false }) {
-                        Text("Cancelar")
-                    }
+    // DIÁLOGO DE CONFIRMACIÓN PARA CERRAR SESIÓN
+    if (mostrarDialogoLogout) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoLogout = false },
+            title = {
+                Text(
+                    text = "Confirmación de Cierre",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text("¿Está seguro de que desea cerrar la sesión actual de la ESFOCAR?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        mostrarDialogoLogout = false
+                        SessionManager.cerrarSesion(context)
+                        onCerrarSesion()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Sí, Salir")
                 }
-            )
-        }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { mostrarDialogoLogout = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
