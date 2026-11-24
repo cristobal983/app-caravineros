@@ -3,22 +3,37 @@ package com.fabiancg.persistenciaroomsqlite.api
 import com.google.gson.annotations.SerializedName
 
 /**
- * Modelo de datos para la API de Feriados de Chile.
- * Fuente oficial: https://apis.digital.gob.cl/fl/feriados/{año}
+ * Modelo de datos para la API de Feriados de Chile (Nager.Date API).
+ * Fuente: https://date.nager.at/api/v3/PublicHolidays/{año}/CL
  *
- * Cada objeto representa un feriado con su fecha, nombre, tipo y ley que lo establece.
- * @SerializedName mapea el nombre del JSON al campo Kotlin.
+ * Mapea los feriados oficiales de Chile de forma segura (Null-Safety) ante serializadores Gson.
  */
 data class Feriado(
-    @SerializedName("fecha")
-    val fecha: String,           // Ej: "2026-01-01"
+    @SerializedName("date")
+    val fecha: String? = null,
 
-    @SerializedName("nombre")
-    val nombre: String,          // Ej: "Año Nuevo"
+    @SerializedName("localName")
+    val nombre: String? = null,
 
-    @SerializedName("tipo")
-    val tipo: String,            // Ej: "Civil" o "Religioso"
+    @SerializedName("name")
+    val nombreIngles: String? = null,
+
+    @SerializedName("global")
+    val esNacional: Boolean? = true,
+
+    @SerializedName("types")
+    val types: List<String>? = null,
 
     @SerializedName("leyes")
-    val leyes: List<String>      // Leyes que establecen el feriado
-)
+    val leyes: List<String>? = null
+) {
+    val fechaSegura: String
+        get() = fecha ?: ""
+
+    val nombreSeguro: String
+        get() = nombre ?: nombreIngles ?: "Feriado Oficial"
+
+    // Clasificación amigable para la interfaz gráfica
+    val tipo: String
+        get() = if (esNacional != false) "Nacional" else "Regional"
+}

@@ -121,7 +121,7 @@ fun FeriadosScreen() {
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "Fuente: APIs Chile — apis.digital.gob.cl",
+                        text = "Fuente: API Feriados Chile (Nager.Date / Servicio Oficial)",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -212,17 +212,17 @@ private fun TarjetaFeriado(feriado: Feriado) {
                 verticalAlignment = Alignment.Top
             ) {
                 Text(
-                    text = feriado.nombre,
+                    text = feriado.nombreSeguro,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                // Badge de tipo (Civil / Religioso)
+                // Badge de tipo (Nacional / Regional / Civil)
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = if (feriado.tipo == "Civil")
+                        containerColor = if (feriado.tipo == "Nacional" || feriado.tipo == "Civil")
                             MaterialTheme.colorScheme.primaryContainer
                         else
                             MaterialTheme.colorScheme.secondaryContainer
@@ -232,7 +232,7 @@ private fun TarjetaFeriado(feriado: Feriado) {
                         text = feriado.tipo,
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = if (feriado.tipo == "Civil")
+                        color = if (feriado.tipo == "Nacional" || feriado.tipo == "Civil")
                             MaterialTheme.colorScheme.onPrimaryContainer
                         else
                             MaterialTheme.colorScheme.onSecondaryContainer
@@ -241,13 +241,19 @@ private fun TarjetaFeriado(feriado: Feriado) {
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "📅 ${feriado.fecha}",
+                text = "📅 ${feriado.fechaSegura}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (feriado.leyes.isNotEmpty()) {
+            if (!feriado.leyes.isNullOrEmpty()) {
                 Text(
                     text = "Ley: ${feriado.leyes.joinToString(", ")}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else if (!feriado.nombreIngles.isNullOrBlank() && feriado.nombreIngles != feriado.nombreSeguro) {
+                Text(
+                    text = "Ref: ${feriado.nombreIngles}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
