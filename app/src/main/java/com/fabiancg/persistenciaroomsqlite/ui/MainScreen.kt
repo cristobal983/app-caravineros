@@ -53,6 +53,7 @@ import com.fabiancg.persistenciaroomsqlite.ui.navigation.NavigationItem
 import com.fabiancg.persistenciaroomsqlite.ui.screens.AdminScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.AuthScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.DocumentsScreen
+import com.fabiancg.persistenciaroomsqlite.ui.screens.FeriadosScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.HomeScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.ProfileScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.SplashScreen
@@ -211,6 +212,7 @@ fun MainScreen() {
                                         NavigationItem.Documents.route -> "Rúbricas y Documentos"
                                         NavigationItem.Admin.route -> "Modo Administración"
                                         NavigationItem.Profile.route -> "Mi Perfil de Usuario"
+                                        NavigationItem.Feriados.route -> "Feriados Nacionales"
                                         else -> "ESFOCAR App"
                                     },
                                     fontWeight = FontWeight.Bold
@@ -272,6 +274,9 @@ fun MainScreen() {
                                 }
                                 NavigationItem.Documents.route -> {
                                     DocumentsScreen(usuarioActivo = usuarioActivo)
+                                }
+                                NavigationItem.Feriados.route -> {
+                                    FeriadosScreen()
                                 }
                                 NavigationItem.Admin.route -> {
                                     if (esDocente) {

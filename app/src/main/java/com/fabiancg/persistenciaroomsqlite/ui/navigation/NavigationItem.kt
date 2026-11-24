@@ -3,6 +3,7 @@ package com.fabiancg.persistenciaroomsqlite.ui.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.SupervisorAccount
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -29,26 +30,29 @@ sealed class NavigationItem(
     // 4. Pantalla de Panel de Administración (Modo Admin)
     object Admin : NavigationItem("admin", "Modo Admin", Icons.Default.SupervisorAccount)
 
+    // 5. Pantalla de Feriados (API externa — Módulo 3 PU3)
+    object Feriados : NavigationItem("feriados", "Feriados", Icons.Default.CalendarMonth)
+
     companion object {
         // Retorna los elementos del menú según el rol (Modo Admin solo visible para Docentes)
         fun obtenerBottomBarItems(esDocente: Boolean): List<NavigationItem> {
             return if (esDocente) {
-                listOf(Home, Documents, Admin, Profile)
+                listOf(Home, Documents, Feriados, Admin, Profile)
             } else {
-                listOf(Home, Documents, Profile)
+                listOf(Home, Documents, Feriados, Profile)
             }
         }
 
         fun obtenerDrawerItems(esDocente: Boolean): List<NavigationItem> {
             return if (esDocente) {
-                listOf(Home, Documents, Admin, Profile)
+                listOf(Home, Documents, Feriados, Admin, Profile)
             } else {
-                listOf(Home, Documents, Profile)
+                listOf(Home, Documents, Feriados, Profile)
             }
         }
 
         // Elementos predeterminados
-        val bottomBarItems = listOf(Home, Documents, Profile)
-        val drawerItems = listOf(Home, Documents, Profile)
+        val bottomBarItems = listOf(Home, Documents, Feriados, Profile)
+        val drawerItems = listOf(Home, Documents, Feriados, Profile)
     }
 }
