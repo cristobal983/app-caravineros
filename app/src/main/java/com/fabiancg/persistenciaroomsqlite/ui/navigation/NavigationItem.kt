@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.SupervisorAccount
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -33,6 +34,9 @@ sealed class NavigationItem(
     // 5. Pantalla de Feriados (API externa — Módulo 3 PU3)
     object Feriados : NavigationItem("feriados", "Feriados", Icons.Default.CalendarMonth)
 
+    // 6. Pantalla de Comunicados (Microservicio Spring Boot)
+    object Comunicados : NavigationItem("comunicados", "Comunicados", Icons.Default.Campaign)
+
     companion object {
         // Retorna los elementos del menú según el rol (Modo Admin solo visible para Docentes)
         fun obtenerBottomBarItems(esDocente: Boolean): List<NavigationItem> {
@@ -45,14 +49,14 @@ sealed class NavigationItem(
 
         fun obtenerDrawerItems(esDocente: Boolean): List<NavigationItem> {
             return if (esDocente) {
-                listOf(Home, Documents, Feriados, Admin, Profile)
+                listOf(Home, Documents, Comunicados, Feriados, Admin, Profile)
             } else {
-                listOf(Home, Documents, Feriados, Profile)
+                listOf(Home, Documents, Comunicados, Feriados, Profile)
             }
         }
 
         // Elementos predeterminados
         val bottomBarItems = listOf(Home, Documents, Feriados, Profile)
-        val drawerItems = listOf(Home, Documents, Feriados, Profile)
+        val drawerItems = listOf(Home, Documents, Comunicados, Feriados, Profile)
     }
 }

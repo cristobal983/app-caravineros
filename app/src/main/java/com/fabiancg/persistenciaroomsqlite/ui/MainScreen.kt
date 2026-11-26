@@ -52,6 +52,7 @@ import com.fabiancg.persistenciaroomsqlite.Usuario
 import com.fabiancg.persistenciaroomsqlite.ui.navigation.NavigationItem
 import com.fabiancg.persistenciaroomsqlite.ui.screens.AdminScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.AuthScreen
+import com.fabiancg.persistenciaroomsqlite.ui.screens.ComunicadosScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.DocumentsScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.FeriadosScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.HomeScreen
@@ -213,6 +214,7 @@ fun MainScreen() {
                                         NavigationItem.Admin.route -> "Modo Administración"
                                         NavigationItem.Profile.route -> "Mi Perfil de Usuario"
                                         NavigationItem.Feriados.route -> "Feriados Nacionales"
+                                        NavigationItem.Comunicados.route -> "Comunicados ESFOCAR"
                                         else -> "ESFOCAR App"
                                     },
                                     fontWeight = FontWeight.Bold
@@ -269,11 +271,15 @@ fun MainScreen() {
                                     HomeScreen(
                                         usuario = usuarioActivo,
                                         onIrADocumentos = { seccionActual = NavigationItem.Documents.route },
+                                        onIrAComunicados = { seccionActual = NavigationItem.Comunicados.route },
                                         onIrAPerfil = { seccionActual = NavigationItem.Profile.route }
                                     )
                                 }
                                 NavigationItem.Documents.route -> {
                                     DocumentsScreen(usuarioActivo = usuarioActivo)
+                                }
+                                NavigationItem.Comunicados.route -> {
+                                    ComunicadosScreen(usuarioActivo = usuarioActivo)
                                 }
                                 NavigationItem.Feriados.route -> {
                                     FeriadosScreen()
@@ -285,6 +291,7 @@ fun MainScreen() {
                                         HomeScreen(
                                             usuario = usuarioActivo,
                                             onIrADocumentos = { seccionActual = NavigationItem.Documents.route },
+                                            onIrAComunicados = { seccionActual = NavigationItem.Comunicados.route },
                                             onIrAPerfil = { seccionActual = NavigationItem.Profile.route }
                                         )
                                     }

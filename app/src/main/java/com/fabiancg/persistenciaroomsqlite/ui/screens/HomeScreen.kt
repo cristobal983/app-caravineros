@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +49,7 @@ import com.fabiancg.persistenciaroomsqlite.Usuario
 fun HomeScreen(
     usuario: Usuario?,
     onIrADocumentos: () -> Unit,
+    onIrAComunicados: () -> Unit = {},
     onIrAPerfil: () -> Unit
 ) {
     val context = LocalContext.current
@@ -182,6 +184,49 @@ fun HomeScreen(
                         )
                         Text(
                             text = "Cargar, ver y eliminar archivos PDF y Word",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // ACCESO DIRECTO A COMUNICADOS (SPRING BOOT)
+        OutlinedCard(
+            onClick = onIrAComunicados,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Campaign,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(modifier = Modifier.size(12.dp))
+                    Column {
+                        Text(
+                            text = "Comunicados Institucionales",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Text(
+                            text = "Avisos en tiempo real desde Spring Boot",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
