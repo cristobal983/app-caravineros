@@ -97,6 +97,21 @@ fun DocumentsScreen(
     // Lista reactiva de documentos leídos desde Room SQLite
     val listaDocumentos by dao.obtenerTodos().collectAsState(initial = emptyList())
 
+    // Estado para la barra de búsqueda en tiempo real
+    var textoBusqueda by remember { mutableStateOf("") }
+
+    // Filtra la lista de documentos según el texto buscado
+    val listaFiltrada = remember(listaDocumentos, textoBusqueda) {
+        if (textoBusqueda.isBlank()) {
+            listaDocumentos
+        } else {
+            listaDocumentos.filter { doc ->
+                doc.nombre.contains(textoBusqueda, ignoreCase = true) ||
+                    doc.categoria.contains(textoBusqueda, ignoreCase = true)
+            }
+        }
+    }
+
     // Estados para alertas y diálogos
     var documentoAEliminar by remember { mutableStateOf<DocumentoItem?>(null) }
     var mensajeAviso by remember { mutableStateOf<String?>(null) }
