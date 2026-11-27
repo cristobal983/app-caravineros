@@ -16,6 +16,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -34,6 +37,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,11 +50,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.fabiancg.persistenciaroomsqlite.AppDatabase
 import com.fabiancg.persistenciaroomsqlite.R
 import com.fabiancg.persistenciaroomsqlite.SessionManager
 import com.fabiancg.persistenciaroomsqlite.Usuario
 import com.fabiancg.persistenciaroomsqlite.ui.navigation.NavigationItem
 import com.fabiancg.persistenciaroomsqlite.ui.screens.AdminScreen
+import com.fabiancg.persistenciaroomsqlite.ui.screens.AlertasScreen
+import com.fabiancg.persistenciaroomsqlite.ui.screens.AsistenteIAScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.AuthScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.ComunicadosScreen
 import com.fabiancg.persistenciaroomsqlite.ui.screens.DocumentsScreen
@@ -66,6 +73,8 @@ import kotlinx.coroutines.launch
 fun MainScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val alertaDao = remember { AppDatabase.getDatabase(context).alertaDao() }
+    val alertasNoLeidas by alertaDao.contarNoLeidas().collectAsState(initial = 0)
 
     // Control de la Pantalla de Carga Inicial (SplashScreen)
     var mostrarSplash by rememberSaveable { mutableStateOf(true) }
@@ -215,6 +224,8 @@ fun MainScreen() {
                                         NavigationItem.Profile.route -> "Mi Perfil de Usuario"
                                         NavigationItem.Feriados.route -> "Feriados Nacionales"
                                         NavigationItem.Comunicados.route -> "Comunicados ESFOCAR"
+                                        NavigationItem.Alertas.route -> "Alertas y Evaluaciones"
+                                        NavigationItem.Asistente.route -> "Asistente IA ESFOCAR"
                                         else -> "ESFOCAR App"
                                     },
                                     fontWeight = FontWeight.Bold
@@ -229,6 +240,20 @@ fun MainScreen() {
                                 }
                             },
                             actions = {
+                                IconButton(onClick = { seccionActual = NavigationItem.Alertas.route }) {
+                                    BadgedBox(
+                                        badge = {
+                                            if (alertasNoLeidas > 0) {
+                                                Badge { Text("$alertasNoLeidas") }
+                                            }
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Notifications,
+                                            contentDescription = "Alertas"
+                                        )
+                                    }
+                                }
                                 IconButton(onClick = { seccionActual = NavigationItem.Profile.route }) {
                                     Icon(
                                         imageVector = Icons.Default.AccountCircle,
@@ -272,6 +297,8 @@ fun MainScreen() {
                                         usuario = usuarioActivo,
                                         onIrADocumentos = { seccionActual = NavigationItem.Documents.route },
                                         onIrAComunicados = { seccionActual = NavigationItem.Comunicados.route },
+                                        onIrAAlertas = { seccionActual = NavigationItem.Alertas.route },
+                                        onIrAAsistente = { seccionActual = NavigationItem.Asistente.route },
                                         onIrAPerfil = { seccionActual = NavigationItem.Profile.route }
                                     )
                                 }
@@ -280,6 +307,12 @@ fun MainScreen() {
                                 }
                                 NavigationItem.Comunicados.route -> {
                                     ComunicadosScreen(usuarioActivo = usuarioActivo)
+                                }
+                                NavigationItem.Alertas.route -> {
+                                    AlertasScreen(usuarioActivo = usuarioActivo)
+                                }
+                                NavigationItem.Asistente.route -> {
+                                    AsistenteIAScreen(usuarioActivo = usuarioActivo)
                                 }
                                 NavigationItem.Feriados.route -> {
                                     FeriadosScreen()
@@ -292,6 +325,8 @@ fun MainScreen() {
                                             usuario = usuarioActivo,
                                             onIrADocumentos = { seccionActual = NavigationItem.Documents.route },
                                             onIrAComunicados = { seccionActual = NavigationItem.Comunicados.route },
+                                            onIrAAlertas = { seccionActual = NavigationItem.Alertas.route },
+                                            onIrAAsistente = { seccionActual = NavigationItem.Asistente.route },
                                             onIrAPerfil = { seccionActual = NavigationItem.Profile.route }
                                         )
                                     }

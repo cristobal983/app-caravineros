@@ -11,16 +11,22 @@ Aplicación móvil Android desarrollada para la Escuela de Formación de Carabin
 - **Sesión:** `SharedPreferences` mediante `SessionManager`
 - **Consumo de APIs:** Retrofit 2 + Gson + Corrutinas
 - **Backend propio:** Microservicio REST en **Spring Boot 3.5** (Java 21 + Spring Data JPA + H2)
-- **Pruebas:** JUnit 4 (unitarias locales con Fake DAO) y AndroidJUnit4 (instrumentadas con SQLite real)
+- **Pruebas:** JUnit 4 (unitarias locales con Fake DAO y pruebas de lógica del asistente) y AndroidJUnit4 (instrumentadas con SQLite real)
+- **Alertas y Notificaciones:** Notificaciones locales (Android Channel) y persistencia en Room para avisos compartidos entre Docentes y Alumnos.
+- **Asistente IA:** Módulo conversacional adaptado al contexto académico y de servicio de ESFOCAR.
 
 ---
 
 ## 2. Módulos Implementados
 
 ### Persistencia Local (Room SQLite)
-- **Entidades:** `Usuario`, `DocumentoItem`, `Persona`
-- **DAOs:** `UsuarioDao`, `DocumentoDao`, `PersonaDAO`
-- **Funciones:** Registro e inicio de sesión por email o RUT, edición de perfil con foto local, carga y visualización nativa de rúbricas (PDF/Word) y panel de administración exclusivo para docentes.
+- **Entidades:** `Usuario`, `DocumentoItem`, `Persona`, `AlertaItem`, `RetroalimentacionItem`
+- **DAOs:** `UsuarioDao`, `DocumentoDao`, `PersonaDAO`, `AlertaDao`, `RetroalimentacionDao`
+- **Funciones:** Registro e inicio de sesión por email o RUT, edición de perfil con foto local, carga y visualización nativa de rúbricas (PDF/Word), sistema de alertas cruzadas (al subir documentos o publicar retroalimentación de pruebas) y panel de administración exclusivo para docentes.
+
+### Asistente IA ESFOCAR
+- **Lógica:** `AsistenteIALogic.kt` y pantalla `AsistenteIAScreen.kt`.
+- Responde dudas en lenguaje natural sobre alertas pendientes, documentos en base de datos, escalas de evaluación y normativas de la app con contexto en tiempo real.
 
 ### Consumo de API Externa
 - **Servicio:** `FeriadosApiService` (`https://date.nager.at/api/v3/PublicHolidays/{anio}/CL`)

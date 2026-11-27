@@ -58,8 +58,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import com.fabiancg.persistenciaroomsqlite.AlertaItem
 import com.fabiancg.persistenciaroomsqlite.AppDatabase
 import com.fabiancg.persistenciaroomsqlite.DocumentoItem
+import com.fabiancg.persistenciaroomsqlite.NotificacionHelper
 import com.fabiancg.persistenciaroomsqlite.Usuario
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -82,7 +84,9 @@ fun DocumentsScreen(
     usuarioActivo: Usuario? = null
 ) {
     val context = LocalContext.current
-    val dao = remember { AppDatabase.getDatabase(context).documentoDao() }
+    val db = remember { AppDatabase.getDatabase(context) }
+    val dao = remember { db.documentoDao() }
+    val alertaDao = remember { db.alertaDao() }
     val scope = rememberCoroutineScope()
 
     // Permiso: Solo los Docentes (o Admin) pueden subir o eliminar archivos.
@@ -107,7 +111,23 @@ fun DocumentsScreen(
                 val nuevoDoc = copiarArchivoASqLite(context, uri)
                 if (nuevoDoc != null) {
                     dao.insertar(nuevoDoc)
-                    mensajeAviso = "¡Archivo '${nuevoDoc.nombre}' cargado con éxito en SQLite!"
+                    val nombreDocente = usuarioActivo?.nombre ?: "Docente ESFOCAR"
+                    val fechaActual = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+                    val tituloAlerta = "Nuevo documento: ${nuevoDoc.nombre}"
+                    val msgAlerta = "El docente $nombreDocente subio el archivo '${nuevoDoc.nombre}' (${nuevoDoc.tipo})."
+                    alertaDao.insertar(
+                        AlertaItem(
+                            titulo = tituloAlerta,
+                            mensaje = msgAlerta,
+                            tipo = "DOCUMENTO",
+                            autor = nombreDocente,
+                            destinatario = "Docentes y Alumnos",
+                            fecha = fechaActual,
+                            leida = false
+                        )
+                    )
+                    NotificacionHelper.mostrarNotificacion(context, tituloAlerta, msgAlerta)
+                    mensajeAviso = "¡Archivo '${nuevoDoc.nombre}' cargado y alerta enviada!"
                 } else {
                     mensajeAviso = "No se pudo cargar el archivo seleccionado."
                 }
@@ -162,7 +182,23 @@ fun DocumentsScreen(
                     onClick = {
                         scope.launch {
                             precargarRubricasEjemplo(context, dao)
-                            mensajeAviso = "¡Rúbricas de ejemplo creadas y guardadas en SQLite!"
+                            val nombreDocente = usuarioActivo?.nombre ?: "Docente ESFOCAR"
+                            val fechaActual = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+                            val tituloAlerta = "Nuevas rubricas publicadas"
+                            val msgAlerta = "El docente $nombreDocente cargo rubricas institucionales en la seccion Documentos."
+                            alertaDao.insertar(
+                                AlertaItem(
+                                    titulo = tituloAlerta,
+                                    mensaje = msgAlerta,
+                                    tipo = "DOCUMENTO",
+                                    autor = nombreDocente,
+                                    destinatario = "Docentes y Alumnos",
+                                    fecha = fechaActual,
+                                    leida = false
+                                )
+                            )
+                            NotificacionHelper.mostrarNotificacion(context, tituloAlerta, msgAlerta)
+                            mensajeAviso = "¡Rúbricas de ejemplo creadas y alerta enviada!"
                         }
                     },
                     modifier = Modifier.weight(1f)

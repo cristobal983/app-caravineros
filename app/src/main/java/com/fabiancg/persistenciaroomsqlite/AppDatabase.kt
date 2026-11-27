@@ -16,9 +16,11 @@ import androidx.room.RoomDatabase
     entities = [
         Persona::class,
         Usuario::class,
-        DocumentoItem::class
+        DocumentoItem::class,
+        AlertaItem::class,
+        RetroalimentacionItem::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -26,6 +28,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun personaDao(): PersonaDAO
     abstract fun usuarioDao(): UsuarioDao
     abstract fun documentoDao(): DocumentoDao
+    abstract fun alertaDao(): AlertaDao
+    abstract fun retroalimentacionDao(): RetroalimentacionDao
 
     companion object {
         @Volatile
