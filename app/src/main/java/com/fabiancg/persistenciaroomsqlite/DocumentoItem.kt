@@ -5,7 +5,7 @@ import androidx.room.PrimaryKey
 
 /**
  * Entidad Room para la tabla "documentos_rubricas".
- * Representa los documentos institucionales (archivos nativos PDF y Word .docx)
+ * Representa las documentaciones institucionales (archivos nativos PDF y Word .docx)
  * cargados, visualizados o eliminados por los alumnos y docentes.
  */
 @Entity(tableName = "documentos_rubricas")
